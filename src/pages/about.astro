@@ -1,5 +1,6 @@
 ---
 import Layout from "../layouts/BlogPost.astro";
+import { Content } from "./about.mdx";
 ---
 
 <Layout
@@ -8,88 +9,5 @@ import Layout from "../layouts/BlogPost.astro";
   pubDate={new Date("April 02 2024")}
   heroImage="/blog-placeholder-about.webp"
 >
-  <h3>Who I Am</h3>
-  <p>
-    Welcome! I'm Michał Gacek, a Senior Software Engineer based in Cracow,
-    Poland, with a profound passion for coding, innovation, and sharing
-    knowledge. Viewing coding as an art form, I thrive on the challenges and
-    creativity it brings into my life. My journey through the tech world is
-    fueled by my ambition, accuracy, and an unwavering desire to constantly
-    expand my skill set.
-  </p>
-
-  <h3>My Professional Path</h3>
-  <p>
-    My career is a tapestry of diverse roles and experiences, having worked in
-    numerous companies that enriched my understanding of programming teams,
-    practices, and software delivery methods. Here’s a brief overview of my
-    journey:
-  </p>
-
-  <ul>
-    <li>
-      <strong>Rockwell Automation:</strong> As a Senior Frontend Developer, I delved
-      into the Angular framework and Electron, focusing on bug fixes and feature
-      implementations. This role was a significant stepping stone in my quest to
-      master Angular.
-    </li>
-    <li>
-      <strong>Intercars:</strong> My tenure as a Senior Frontend Developer involved
-      delivering innovative and user-centric web applications, utilizing a tech stack
-      that includes TypeScript, React, Next.js, and ChakraUI.
-    </li>
-    <li>
-      <strong>Grin Gaming:</strong> As the Principal Front-End Engineer, I was responsible
-      for the development and maintenance of the Grin Gaming platform, Smile Coin
-      site, and application, utilizing TypeScript, React, Redux, and ChakraUI in
-      a Kanban team environment.
-    </li>
-    <li>
-      <strong>Polette:</strong> My role as a Senior Software Developer centered around
-      refactoring the payment system with node.js and implementing e2e tests using
-      Cypress and Puppeteer.
-    </li>
-  </ul>
-
-  <p>
-    Through each role, my technical prowess has been enhanced, alongside my
-    ability to collaborate effectively with cross-functional teams to design,
-    develop, and deploy cutting-edge solutions.
-  </p>
-
-  <h3>Skills and Achievements</h3>
-  <p>My technical toolkit is extensive, with proficiencyin:</p>
-  <ul>
-    <li>JavaScript/TypeScript</li>
-    <li>Frontend frameworks like React, Angular, and Vue.js</li>
-    <li>Backend development with Node.js and Python</li>
-    <li>Databases including MySQL and MongoDB</li>
-    <li>Other technologies like Redux, Docker, and GraphQL</li>
-  </ul>
-  <p>
-    Notably, my project for Sabre, as a Senior Software Developer with Relyon
-    Recruitment, involved developing and maintaining a Booking Engine using
-    React and Redux, where I managed deploys using AWS and shared my knowledge
-    on programming techniques and design patterns.
-  </p>
-  <h3>Beyond Coding</h3>
-  <p>
-    English and Polish are the languages I navigate through both my professional
-    and personal life. When not immersed in coding, I engage with programming,
-    reading, and exploring science, reflecting my insatiable curiosity and
-    desire to learn.
-  </p>
-  <h3>Let's Connect</h3>
-  <p>
-    I’m always open to discussing technology, education, or any project ideas.
-    Feel free to reach out to me at <a
-      href="mailto:michal.gacek@tiptopdesign.pl">michal.gacek@tiptopdesign.pl</a
-    > or explore my work on GitHub and my personal blog at <a href="/"
-      >tiptopdesign.pl</a
-    >.
-    <p>
-      Thank you for visiting my page. Let's embark on a journey of technological
-      exploration and continuous learning together.
-    </p>
-  </p>
+  <Content />
 </Layout>
