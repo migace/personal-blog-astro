@@ -1,0 +1,110 @@
+---
+title: "TypeScript's `satisfies` Operator: When and How to Use It"
+description: "TypeScript's `satisfies` Operator: When and How to Use It"
+pubDate: "March 13 2025"
+heroImage: "/typescript-satisfies.png"
+---
+
+TypeScript continues to evolve with new features that enhance type safety and developer experience. One such addition is the `satisfies` operator, introduced in TypeScript 4.9. This operator allows developers to enforce type constraints while preserving inferred types. In this article, we'll explore what the `satisfies` operator does, when to use it, and how it can improve type safety in your projects.
+
+---
+
+## What is the `satisfies` Operator?
+The `satisfies` operator is a type assertion mechanism that ensures a value conforms to a specific type while maintaining its inferred type information. This is particularly useful when you want to:
+
+- Ensure an object matches a particular shape.
+- Retain the precise type of values for better inference.
+- Get the benefits of both type checking and flexible type inference.
+
+### **Basic Syntax**
+```typescript
+const user = {
+  id: 1,
+  name: "Alice",
+  role: "admin",
+} satisfies { id: number; name: string; role: string };
+```
+In this example, `user` must satisfy the given type, but its inferred type remains as `{ id: number; name: string; role: "admin" }`, allowing us to use it with more specific inferences.
+
+---
+
+## **Key Benefits of `satisfies`**
+### 1. **Preserving Literal Types**
+One of the main advantages of `satisfies` is that it retains literal types instead of widening them to general types.
+
+#### **Example: Without `satisfies`**
+```typescript
+const theme: { color: string; } = {
+  color: "blue",
+};
+
+const colorChoice = theme.color; // type: string (literal type lost)
+```
+Here, `colorChoice` is inferred as `string`, losing the specific literal type (`"blue"`).
+
+#### **Example: With `satisfies`**
+```typescript
+const theme = {
+  color: "blue",
+} satisfies { color: string };
+
+const colorChoice = theme.color; // type: "blue"
+```
+With `satisfies`, `colorChoice` retains its literal type (`"blue"`), making it useful for scenarios where specific values matter.
+
+---
+
+### 2. **Enforcing Shape Without Excess Property Checks**
+When defining objects, TypeScript may throw errors if unexpected properties exist. The `satisfies` operator ensures a shape is followed without restricting extra properties.
+
+#### **Example: Type Checking Without Property Removal**
+```typescript
+const buttonStyle = {
+  borderRadius: 8,
+  color: "red",
+  padding: 10,
+} satisfies { borderRadius: number; color: string };
+```
+The `buttonStyle` object satisfies the required shape but still allows `padding`, which isn’t explicitly defined in the expected type.
+
+---
+
+### 3. **Better Inference for Mapped Types**
+When working with mapped types, `satisfies` helps retain better inference without needing explicit type annotations.
+
+#### **Example: Mapped Type with `satisfies`**
+```typescript
+type RolePermissions = {
+  admin: string[];
+  user: string[];
+};
+
+const permissions = {
+  admin: ["create", "delete"],
+  user: ["read"],
+} satisfies RolePermissions;
+
+permissions.admin.push("update"); // Allowed and properly inferred
+```
+Here, the array of permissions remains type-safe and maintains its inferred values.
+
+---
+
+## **When Should You Use `satisfies`?**
+Use the `satisfies` operator when:
+- You want to enforce a structure but retain literal type information.
+- You need to maintain type safety while avoiding excess property checks.
+- You’re working with mapped types and want proper inference.
+- You need a flexible type constraint without explicit widening.
+
+Avoid using `satisfies` when:
+- The standard TypeScript type annotations are sufficient.
+- You require strict type narrowing rather than inference.
+
+---
+
+## **Summary**
+The `satisfies` operator is a powerful tool in TypeScript that helps enforce type constraints while maintaining inferred types. It provides benefits in retaining literal types, preventing excess property checks, and improving inference in mapped types. By integrating `satisfies` into your TypeScript workflow, you can achieve better type safety without sacrificing flexibility.
+
+Are you using `satisfies` in your TypeScript projects? Let me know your thoughts in the email message! 🚀
+

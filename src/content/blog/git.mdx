@@ -1,0 +1,258 @@
+---
+title: "Mastering Git: From Basics to Advanced Techniques"
+description: "Mastering Git: From Basics to Advanced Techniques"
+pubDate: "June 08 2024"
+heroImage: "/blog-git-placeholder.webp"
+---
+
+Git is a powerful version control system used by developers worldwide to manage and track changes in their codebases. Whether you're a beginner or looking to sharpen your skills, this guide will take you through the essential concepts and advanced features of Git.
+
+#### Table of Contents
+
+1. [Introduction to Git](#introduction-to-git)
+2. [Setting Up Git](#setting-up-git)
+3. [Basic Git Commands](#basic-git-commands)
+4. [Branching and Merging](#branching-and-merging)
+5. [Working with Remote Repositories](#working-with-remote-repositories)
+6. [Advanced Git Techniques](#advanced-git-techniques)
+7. [Best Practices](#best-practices)
+8. [Conclusion](#conclusion)
+
+# Introduction to Git
+
+Git is a distributed version control system created by Linus Torvalds in 2005. It allows multiple developers to work on a project simultaneously without overwriting each other's changes, providing a robust system for tracking code history and facilitating collaboration.
+
+## Why Use Git?
+
+- **Version Control**: Track changes and revert to previous versions of your code if needed.
+- **Collaboration**: Work with multiple developers seamlessly without conflicts.
+- **Branching**: Experiment with new features without affecting the main codebase.
+- **Distributed System**: Every developer has a full copy of the repository, eliminating a single point of failure.
+
+---
+
+## Setting Up Git
+
+### Installing Git
+
+#### Windows
+1. Download the Git installer from [git-scm.com](https://git-scm.com/).
+2. Run the installer and follow the setup instructions.
+
+#### macOS
+Use Homebrew to install Git:
+
+```sh
+brew install git
+```
+
+#### Linux
+Install Git using your package manager:
+
+```sh
+sudo apt-get install git  # Debian-based systems
+```
+
+```sh
+sudo yum install git  # Red Hat-based systems
+```
+
+### Configuring Git
+
+After installation, set up your user details:
+
+```sh
+git config --global user.name "Your Name"
+git config --global user.email "youremail@example.com"
+```
+
+Verify your configuration:
+
+```sh
+git config --list
+```
+
+---
+
+## Basic Git Commands
+
+### Initializing a Repository
+To start tracking a project with Git, navigate to your project directory and run:
+
+```sh
+git init
+```
+
+### Cloning a Repository
+To copy an existing repository from a remote source:
+
+```sh
+git clone https://github.com/user/repository.git
+```
+
+### Staging and Committing Changes
+
+#### Stage Changes
+Add files to the staging area before committing:
+
+```sh
+git add filename  # Add a specific file
+```
+
+```sh
+git add .  # Add all changes in the directory
+```
+
+#### Commit Changes
+Commit the staged changes with a meaningful message:
+
+```sh
+git commit -m "Describe your changes here"
+```
+
+### Viewing Repository Status
+Check the current state of your repository:
+
+```sh
+git status
+```
+
+### Viewing Commit History
+See a log of past commits:
+
+```sh
+git log
+```
+
+---
+
+## Branching and Merging
+
+### Creating and Switching Branches
+
+1. Create a new branch:
+   
+   ```sh
+   git branch new-feature
+   ```
+
+2. Switch to the new branch:
+   
+   ```sh
+   git checkout new-feature
+   ```
+
+Alternatively, create and switch to a new branch in one command:
+
+```sh
+git checkout -b new-feature
+```
+
+### Merging Branches
+To merge changes from one branch into another:
+
+1. Switch to the branch you want to merge into:
+   
+   ```sh
+   git checkout main
+   ```
+
+2. Merge the feature branch:
+   
+   ```sh
+   git merge new-feature
+   ```
+
+### Resolving Merge Conflicts
+If there are conflicts during a merge, Git will highlight them in affected files. Manually resolve the conflicts, then stage and commit the resolved files:
+
+```sh
+git add resolved-file
+```
+
+```sh
+git commit -m "Resolved merge conflict"
+```
+
+---
+
+## Working with Remote Repositories
+
+### Adding a Remote Repository
+Link your local repository to a remote repository:
+
+```sh
+git remote add origin https://github.com/user/repository.git
+```
+
+### Pushing Changes
+Send your local commits to the remote repository:
+
+```sh
+git push origin main
+```
+
+### Pulling Changes
+Fetch and merge changes from the remote repository:
+
+```sh
+git pull origin main
+```
+
+---
+
+## Advanced Git Techniques
+
+### Rebasing
+Rebasing applies changes from one branch onto another, keeping a linear history:
+
+```sh
+git checkout feature-branch
+git rebase main
+```
+
+### Cherry-Picking
+Apply a specific commit from one branch to another:
+
+```sh
+git checkout main
+git cherry-pick commit-hash
+```
+
+### Stashing
+Temporarily save changes without committing:
+
+```sh
+git stash
+```
+
+Retrieve stashed changes:
+
+```sh
+git stash apply
+```
+
+### Recovering Lost Commits (Reflog)
+If you lose commits, use `reflog` to recover them:
+
+```sh
+git reflog
+```
+
+---
+
+## Best Practices
+
+- **Commit Often**: Make frequent commits with clear, meaningful messages.
+- **Use Branches**: Work on new features and fixes in separate branches.
+- **Regularly Pull and Rebase**: Keep your branch updated to avoid large merge conflicts.
+- **Write Descriptive Commit Messages**: Clearly explain what changes were made.
+- **Review and Test Before Merging**: Ensure code quality and avoid breaking the project.
+
+---
+
+## Conclusion
+
+Git is an essential tool for modern software development, offering powerful features for version control and collaboration. By mastering the basics and exploring advanced techniques, you can streamline your workflow and improve your productivity.
+
+Happy coding!
