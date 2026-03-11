@@ -87,7 +87,48 @@ p {
   margin-bottom: 1em;
 }
 .prose p {
-  margin-bottom: 2em;
+  margin-bottom: 1.25em;
+}
+.prose h2 {
+  margin-top: 2em;
+  margin-bottom: 0.75em;
+}
+.prose h3 {
+  margin-top: 1.75em;
+  margin-bottom: 0.5em;
+}
+.prose h4 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+.prose ul,
+.prose ol {
+  margin-top: 0.5em;
+  margin-bottom: 1.25em;
+  padding-left: 1.5em;
+}
+.prose li {
+  margin-bottom: 0.375em;
+}
+.prose li > ul,
+.prose li > ol {
+  margin-top: 0.375em;
+  margin-bottom: 0;
+}
+.prose hr {
+  margin: 2em 0;
+}
+.prose pre {
+  margin: 1.5em 0;
+}
+.prose blockquote {
+  margin: 1.5em 0;
+}
+.prose > :first-child {
+  margin-top: 0;
+}
+.prose > :last-child {
+  margin-bottom: 0;
 }
 textarea {
   width: 100%;
