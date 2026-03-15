@@ -1,13 +1,305 @@
 ---
-import Layout from "../layouts/BlogPost.astro";
+import BaseHead from "../components/BaseHead.astro";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
 import { Content } from "./about.mdx";
 ---
 
-<Layout
-  title="About Michał Gacek"
-  description="Lorem ipsum dolor sit amet"
-  pubDate={new Date("April 02 2024")}
-  heroImage="/blog-placeholder-about.webp"
->
-  <Content />
-</Layout>
+<!doctype html>
+<html lang="en">
+  <head>
+    <BaseHead title="About — Michał Gacek" description="Senior full-stack engineer, technical leader, and university lecturer based in Kraków, Poland." />
+  </head>
+  <body>
+    <Header />
+    <main>
+      <Content />
+      <div class="about-divider"></div>
+      <div class="about-closing">
+        <h2 class="about-section-title">Let's Connect</h2>
+        <p class="about-closing-text">If you're building a product, modernizing a system, or exploring how AI and software can improve the way your business operates, I'd be glad to connect.</p>
+        <div class="about-contact">
+          <a href="mailto:michal.gacek@tiptopdesign.pl" class="contact-card">
+            <div class="contact-card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="20" height="16" x="2" y="4" rx="2"/>
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+              </svg>
+            </div>
+            <div class="contact-card-body">
+              <div class="contact-card-label">Email</div>
+              <div class="contact-card-value">michal.gacek@tiptopdesign.pl</div>
+            </div>
+          </a>
+          <a href="https://github.com/migace" target="_blank" class="contact-card">
+            <div class="contact-card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.2c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/>
+                <path d="M9 18c-4.51 2-5-2-7-2"/>
+              </svg>
+            </div>
+            <div class="contact-card-body">
+              <div class="contact-card-label">GitHub</div>
+              <div class="contact-card-value">github.com/migace</div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </main>
+    <Footer />
+  </body>
+</html>
+
+<style is:global>
+  .about-hero {
+    padding: 2.5rem 0 0;
+    text-align: center;
+  }
+
+  .about-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1rem;
+  }
+
+  .about-title {
+    font-size: clamp(2.2rem, 5vw, 3.4rem);
+    font-weight: 700;
+    line-height: 1.1;
+    color: rgb(var(--black));
+    margin: 0 0 1.25rem;
+  }
+
+  .about-lead {
+    font-size: 1.2rem;
+    line-height: 1.65;
+    color: rgb(var(--gray-dark));
+    max-width: 960px;
+    margin: 0 auto 1rem;
+  }
+
+  .about-sub {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: rgb(var(--gray));
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .about-divider {
+    border-top: 1px solid rgb(var(--gray-light));
+    margin: 2.5rem 0;
+  }
+
+  .about-section {
+    margin: 0;
+  }
+
+  .about-section-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: rgb(var(--black));
+    margin: 0 0 0.75rem;
+  }
+
+  .about-section p {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: rgb(var(--gray-dark));
+    margin: 0 auto 1rem;
+    max-width: 960px;
+  }
+
+  .about-list {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .about-list li {
+    padding-left: 1.4rem;
+    position: relative;
+    color: rgb(var(--gray-dark));
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .about-list li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Experience */
+  .experience-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1.25rem;
+  }
+
+  .exp-item {
+    padding: 1.25rem;
+    border: 1px solid rgb(var(--gray-light));
+    border-radius: 10px;
+    background: white;
+  }
+
+  .exp-company {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: rgb(var(--black));
+    margin-bottom: 0.2rem;
+  }
+
+  .exp-role {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.6rem;
+  }
+
+  .exp-desc {
+    font-size: 0.875rem !important;
+    color: rgb(var(--gray)) !important;
+    line-height: 1.6 !important;
+    margin: 0 !important;
+  }
+
+  /* Expertise */
+  .expertise-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-top: 1.25rem;
+  }
+
+  .expertise-item {
+    padding: 1.1rem 1.25rem;
+    background: rgba(var(--gray-light), 0.4);
+    border-radius: 8px;
+  }
+
+  .expertise-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(30, 41, 59, 0.08);
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    margin-bottom: 0.6rem;
+  }
+
+  .expertise-item p {
+    font-size: 0.875rem !important;
+    color: rgb(var(--gray-dark)) !important;
+    line-height: 1.6 !important;
+    margin: 0 !important;
+  }
+
+  /* Closing */
+  .about-closing {
+    padding: 0.5rem 0 1rem;
+    text-align: center;
+  }
+
+  .about-closing-text {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: rgb(var(--gray-dark));
+    max-width: 960px;
+    margin: 0 auto 1.5rem;
+  }
+
+  .about-contact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: center;
+  }
+
+  .contact-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.1rem 1.4rem;
+    background: white;
+    border: 1px solid rgb(var(--gray-light));
+    border-radius: 10px;
+    text-decoration: none !important;
+    color: rgb(var(--black)) !important;
+    box-shadow: 0 1px 4px rgba(var(--gray), 10%);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    min-width: 240px;
+  }
+
+  .contact-card:hover {
+    box-shadow: var(--box-shadow);
+    transform: translateY(-2px);
+    color: rgb(var(--black)) !important;
+  }
+
+  .contact-card-icon {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(30, 41, 59, 0.06);
+    border-radius: 8px;
+    color: var(--accent);
+  }
+
+  .contact-card-icon svg {
+    display: block;
+  }
+
+  .contact-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .contact-card-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgb(var(--gray));
+  }
+
+  .contact-card-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgb(var(--black));
+  }
+
+  @media (max-width: 720px) {
+    .about-hero {
+      padding: 1.5rem 0;
+    }
+
+    .experience-grid,
+    .expertise-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .about-contact {
+      flex-direction: column;
+    }
+  }
+</style>

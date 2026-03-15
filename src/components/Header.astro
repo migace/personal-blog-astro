@@ -46,7 +46,7 @@ import { SITE_TITLE } from "../consts";
 <style>
   header {
     margin: 0;
-    padding: 0 1em;
+    padding: 0;
     background: white;
     box-shadow: 0 2px 8px rgba(var(--black), 5%);
   }
@@ -63,6 +63,9 @@ import { SITE_TITLE } from "../consts";
     display: flex;
     align-items: center;
     justify-content: space-between;
+    width: 960px;
+    max-width: calc(100% - 2em);
+    margin: 0 auto;
   }
   nav a {
     padding: 1em 0.5em;

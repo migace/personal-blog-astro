@@ -19,3 +19,215 @@ import { Content } from "./index.mdx";
     <Footer />
   </body>
 </html>
+
+<style is:global>
+  .hero {
+    padding: 2.5rem 0 0;
+    text-align: center;
+  }
+
+  .hero-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1rem;
+  }
+
+  .hero-title {
+    font-size: clamp(2.2rem, 5vw, 3.4rem);
+    font-weight: 700;
+    line-height: 1.1;
+    color: rgb(var(--black));
+    margin: 0 0 1.25rem;
+  }
+
+  .hero-lead {
+    font-size: 1.2rem;
+    line-height: 1.65;
+    color: rgb(var(--gray-dark));
+    max-width: 960px;
+    margin: 0 auto 1rem;
+  }
+
+  .hero-sub {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: rgb(var(--gray));
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .divider {
+    border-top: 1px solid rgb(var(--gray-light));
+    margin: 2.5rem 0;
+  }
+
+  .section {
+    margin: 0;
+  }
+
+  .section-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: rgb(var(--black));
+    margin: 0 0 0.75rem;
+  }
+
+  .feature-list {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .feature-list li {
+    padding-left: 1.4rem;
+    position: relative;
+    color: rgb(var(--gray-dark));
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  .feature-list li::before {
+    content: "→";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+    margin: 0;
+  }
+
+  .card {
+    background: white;
+    border: 1px solid rgb(var(--gray-light));
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 4px rgba(var(--gray), 10%);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+
+  .card:hover {
+    box-shadow: var(--box-shadow);
+    transform: translateY(-2px);
+  }
+
+  .card-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(30, 41, 59, 0.06);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    color: var(--accent);
+  }
+
+  .card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: rgb(var(--black));
+    margin: 0 0 0.5rem;
+  }
+
+  .card-text {
+    font-size: 0.9rem;
+    color: rgb(var(--gray));
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .audience-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+    margin-top: 1rem;
+  }
+
+  .audience-item {
+    padding: 1.25rem;
+    background: rgba(var(--gray-light), 0.4);
+    border-radius: 8px;
+  }
+
+  .audience-tag {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(30, 41, 59, 0.08);
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    margin-bottom: 0.6rem;
+  }
+
+  .audience-item p {
+    font-size: 0.9rem;
+    color: rgb(var(--gray-dark));
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .closing {
+    padding: 0.5rem 0 1rem;
+    text-align: center;
+  }
+
+  .closing-text {
+    font-size: 1rem;
+    line-height: 1.75;
+    color: rgb(var(--gray-dark));
+    max-width: 960px;
+    margin: 0 auto 1rem;
+  }
+
+  .closing-cta {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: rgb(var(--gray-dark));
+    max-width: 960px;
+    margin: 0 auto 1.75rem;
+  }
+
+  .cta-button {
+    display: inline-block;
+    background: var(--accent);
+    color: white !important;
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 0.7rem 1.5rem;
+    border-radius: 6px;
+    text-decoration: none !important;
+    transition: background 0.2s ease, transform 0.15s ease;
+    letter-spacing: 0.02em;
+  }
+
+  .cta-button:hover {
+    background: #334155;
+    transform: translateY(-1px);
+    color: white !important;
+  }
+
+  @media (max-width: 720px) {
+    .hero {
+      padding: 1.5rem 0 1.5rem;
+    }
+
+    .cards-grid,
+    .audience-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
