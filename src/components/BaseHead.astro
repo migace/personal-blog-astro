@@ -67,13 +67,11 @@ declare global {
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-NHQL2TX44G"
 ></script>
-<script>
+<script is:inline>
   window.dataLayer = window.dataLayer || [];
-
-  function gtag(...args: any[]) {
-    window.dataLayer.push(args);
-  }
-
-  gtag("js", new Date());
-  gtag("config", "G-NHQL2TX44G");
+  window.gtag = function () {
+    window.dataLayer.push(arguments);
+  };
+  window.gtag("js", new Date());
+  window.gtag("config", "G-NHQL2TX44G");
 </script>
