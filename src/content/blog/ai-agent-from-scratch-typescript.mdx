@@ -1,0 +1,491 @@
+---
+title: "How I Built an AI Agent From Scratch in TypeScript — No Frameworks, No Magic"
+description: "A deep dive into building a real AI agent from scratch in TypeScript — no LangChain, no CrewAI, just a loop, the OpenAI API, and a few small libraries. Learn the architecture, the decisions, and the lessons that frameworks hide from you."
+pubDate: "March 28 2026"
+heroImage: "/ai-agent-from-scratch.png"
+---
+
+*Why building the loop yourself teaches you more about AI agents than any framework tutorial ever will.*
+
+---
+
+Over the last months, I've been building AI-powered features — from internal tools that automate developer workflows to product-facing agents that talk to real users. And one thing became clear quickly: most "AI agent" tutorials don't prepare you for real-world usage.
+
+They either hide everything behind frameworks so you never learn what's actually happening, or oversimplify the problem to a toy example that falls apart the moment you add a second tool.
+
+So I decided to build an agent from scratch — no LangChain, no CrewAI, no orchestration framework. Just TypeScript, the OpenAI API, and a handful of small libraries for things that aren't the point (persistence, spinners, env vars). Not as a learning exercise. As a foundation I can actually reason about and extend when things go wrong in production.
+
+The result is a CLI agent that receives a natural language message, decides whether it needs to call external tools, executes them, and keeps reasoning until it has a final answer. It's ~200 lines of code, but writing it forced me to understand the parts frameworks usually hide: control flow, tool boundaries, memory, and failure modes.
+
+And here's the thing most people overcomplicate:
+
+> **An agent is just a loop.**
+>
+> Everything else — frameworks, orchestration layers, abstractions — is built on top of this single idea. If you understand the loop, you understand agents.
+
+That's the thesis of this entire article. Let me show you what I mean.
+
+---
+
+## The Use Case
+
+Here's the scenario: a user runs a CLI command like this:
+
+```bash
+npx tsx index.ts "Generate an image of a sunset over the ocean"
+```
+
+Behind the scenes, the agent needs to:
+
+1. Persist the user's message to a conversation history
+2. Send the full history to an LLM with a set of available tools
+3. Recognize that this request requires the DALL-E image generation tool
+4. Execute the tool call with a well-crafted prompt
+5. Feed the tool's result (an image URL) back to the LLM
+6. Let the LLM compose a final natural language response
+7. Print it to the terminal
+
+This is non-trivial because the agent doesn't just call a function — it *decides* to call a function. The LLM acts as a reasoning engine that chooses which tool to invoke (if any), interprets the result, and may even loop multiple times before settling on a final answer. That's the fundamental difference between a chatbot and an agent.
+
+From a product perspective, this pattern is everywhere: customer support bots that look up orders, coding assistants that run tests, research agents that query multiple APIs. The tool-augmented reasoning loop is the backbone of all of them.
+
+---
+
+## What We're Building
+
+The agent follows a simple but powerful flow:
+
+```
+User message
+    ↓
+┌─────────────────────────────────────┐
+│           AGENT LOOP                │
+│                                     │
+│  Load history → Call LLM → Check:   │
+│    ├─ Text response? → Return it    │
+│    └─ Tool call? → Execute tool     │
+│         ↓                           │
+│    Append result → Loop again       │
+│                                     │
+│  (max 20 iterations)                │
+└─────────────────────────────────────┘
+    ↓
+Final response printed to terminal
+```
+
+**Input:** A string from the command line — any natural language message.
+
+**Processing:** An iterative loop where the LLM reasons about the message, optionally invokes tools, and refines its response based on tool outputs.
+
+**Output:** A final text response from the LLM, printed to stdout.
+
+The entire system is ~200 lines of TypeScript across 10 files. No dependency injection containers, no plugin registries, no YAML configuration. Just functions calling functions.
+
+---
+
+## Step-by-Step Implementation
+
+### Step 1 — Project Setup and Entry Point
+
+The tech stack is deliberately minimal:
+
+| Library | Purpose |
+|---------|---------|
+| `openai` | LLM calls and DALL-E image generation |
+| `zod` | Runtime-validated tool parameter schemas |
+| `lowdb` | JSON file persistence for conversation history |
+| `ora` | Terminal spinner for UX feedback |
+| `dotenv` | Environment variable loading |
+| `uuid` | Unique IDs for stored messages |
+
+The entry point is `index.ts` — and it's intentionally boring:
+
+```typescript
+import 'dotenv/config'
+import { runAgent } from './src/agent'
+import { tools } from './src/tools'
+import { clearMessages } from './src/memory'
+
+const arg = process.argv[2]
+
+if (arg === '--clear') {
+  await clearMessages()
+  console.log('Conversation history cleared.')
+  process.exit(0)
+}
+
+if (!arg) {
+  console.error('Usage: npx tsx index.ts "<message>" | --clear')
+  process.exit(1)
+}
+
+const response = await runAgent({ userMessage: arg, tools })
+console.log(response)
+```
+
+This file does exactly three things: loads environment variables, parses the CLI argument, and hands everything off to `runAgent`. One design choice worth calling out: the `tools` array is imported and passed explicitly into `runAgent`. The agent doesn't discover its own tools or load them from a config file. This makes the dependency graph obvious and testable. You can see exactly what the agent can do by reading one import statement.
+
+---
+
+### Step 2 — The Type System
+
+Before diving into the agent logic, let's look at the types that hold everything together (`types.ts`):
+
+```typescript
+import type OpenAI from 'openai'
+import type { z } from 'zod'
+
+export type AIMessage =
+  | OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam
+  | { role: 'user'; content: string }
+  | { role: 'tool'; content: string; tool_call_id: string }
+
+export interface ToolFn<A = unknown, T = unknown> {
+  (input: { userMessage: string; toolArgs: A }): Promise<T>
+}
+
+export interface ToolDefinition {
+  name: string
+  description: string
+  parameters: z.ZodObject<z.ZodRawShape>
+}
+```
+
+`AIMessage` is a discriminated union covering the three message types in an OpenAI conversation: assistant messages (which may contain tool calls), user messages, and tool result messages. This single type flows through the entire system — from memory storage to LLM input.
+
+`ToolDefinition` pairs a name and description with a Zod schema for parameters. The Zod schema does double duty: it validates arguments at runtime *and* gets converted into the JSON Schema that OpenAI's function calling API expects. One schema, two purposes — no drift between what the LLM sees and what the code enforces.
+
+---
+
+### Step 3 — The Core Agent Loop
+
+This is the heart of the entire system — the file that makes it an *agent* and not just a chatbot (`src/agent.ts`):
+
+```typescript
+import type { ToolDefinition } from '../types'
+import { runLLM } from './llm'
+import { addMessages, getMessages } from './memory'
+import { runTool } from './toolRunner'
+import { showLoader } from './ui'
+
+const MAX_ITERATIONS = 20
+
+export const runAgent = async ({ userMessage, tools }: AgentParams) => {
+  await addMessages([{ role: 'user', content: userMessage }])
+
+  const loader = showLoader('🤔')
+  let iterations = 0
+
+  while (iterations < MAX_ITERATIONS) {
+    iterations++
+
+    const history = await getMessages()
+    const response = await runLLM({ messages: history, tools })
+    await addMessages([response])
+
+    if (response.content) {
+      loader.stop()
+      return response.content
+    }
+
+    if (response.tool_calls) {
+      for (const toolCall of response.tool_calls) {
+        loader.update(`🔧 Running ${toolCall.function.name}...`)
+
+        try {
+          const result = await runTool(toolCall, userMessage)
+          await addMessages([
+            { role: 'tool', content: result, tool_call_id: toolCall.id },
+          ])
+          loader.succeed(`✅ ${toolCall.function.name} completed`)
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error'
+          await addMessages([
+            {
+              role: 'tool',
+              content: `Error: ${errorMessage}`,
+              tool_call_id: toolCall.id,
+            },
+          ])
+          loader.fail(`❌ ${toolCall.function.name} failed: ${errorMessage}`)
+        }
+      }
+
+      continue
+    }
+
+    loader.stop()
+    return 'No response from the model.'
+  }
+
+  loader.stop()
+  return 'Max iterations reached. Please try again.'
+}
+```
+
+Let me break down the critical decisions embedded in this code.
+
+**The loop structure.** The `while` loop with a counter is the simplest possible implementation of the think-act-observe cycle. Each iteration: load full history → ask the LLM → check what it returned. If it returned text, we're done. If it returned tool calls, execute them and loop again. This is the same pattern that LangChain's `AgentExecutor`, AutoGPT, and every other agent framework implements — just without the abstraction layers.
+
+**Persisting before reasoning.** The user message is saved to the database *before* the loop starts. Every assistant response and tool result is also persisted immediately. This means if the process crashes mid-loop, you don't lose the conversation. It also means the next invocation picks up where the last one left off — the agent has memory across sessions by default.
+
+**Error handling as conversation.** When a tool throws, the error message is wrapped in a `role: 'tool'` message and fed back to the LLM. The agent doesn't crash — it tells the model "this tool failed" and lets the model decide what to do next. This is a critical pattern: **errors are data, not exceptions**.
+
+**The iteration cap.** `MAX_ITERATIONS = 20` is a safety net. Without it, a confused model could loop forever — calling tools that return unhelpful results, then calling them again. Twenty iterations is generous enough for complex multi-tool workflows but prevents runaway API costs.
+
+**The third exit path.** If the response has neither `content` nor `tool_calls`, something unexpected happened. Rather than throwing, the agent returns a graceful message. Defensive programming matters when your control flow depends on an LLM's output.
+
+---
+
+### Step 4 — The LLM Layer
+
+`src/llm.ts` is where the agent talks to OpenAI:
+
+```typescript
+import { zodFunction } from 'openai/helpers/zod'
+import type { AIMessage, ToolDefinition } from '../types'
+import { openai } from './ai'
+import { systemPrompt } from './systemPrompt'
+
+export const runLLM = async ({ messages, tools }: LLMParams) => {
+  const formattedTools = tools.map(zodFunction)
+  const response = await openai.chat.completions.create({
+    model: 'gpt-5-nano',
+    messages: [{ role: 'system', content: systemPrompt }, ...messages],
+    tools: formattedTools,
+    tool_choice: 'auto',
+    parallel_tool_calls: false,
+  })
+
+  return response.choices[0].message
+}
+```
+
+A few things worth noting:
+
+**`zodFunction` is doing heavy lifting.** OpenAI's helper takes a Zod schema and converts it into the JSON Schema format that the function calling API expects. Tool authors define their parameters once in Zod and get both runtime validation and API-compatible schemas for free.
+
+**`tool_choice: 'auto'`** lets the model decide whether to call a tool or respond directly. Not every message needs a tool — sometimes the user just says "thanks" and the agent should respond naturally.
+
+**`parallel_tool_calls: false`** is a deliberate constraint. OpenAI's API can return multiple tool calls in a single response, but I disabled that. Why? Because the agent loop processes tool calls sequentially, and parallel execution would require concurrency handling, race conditions on the message history, and more complex error recovery. Sequential is the right default. You can always add parallelism later when you actually need it.
+
+The system prompt is minimal and intentional:
+
+```typescript
+export const systemPrompt = `You are a helpful AI assistant with access to tools. 
+When a user asks you something, decide whether to use a tool or respond directly.
+If you use a tool, explain what you found based on the tool's output.
+Always be concise and helpful.`
+```
+
+Four sentences are enough. The tool descriptions (embedded in the Zod schemas) carry most of the behavioral guidance. The system prompt just sets the tone.
+
+---
+
+### Step 5 — Tools: Definition and Execution
+
+Each tool is a self-contained module in `src/tools/` with two exports: a definition and a function. Here's the image generation tool:
+
+```typescript
+import { z } from 'zod'
+import type { ToolFn } from '../../types'
+import { openai } from '../ai'
+
+export const generateImageToolDefinition = {
+  name: 'generate_image',
+  description: 'use this tool to generate an image',
+  parameters: z.object({
+    prompt: z
+      .string()
+      .describe(
+        "The prompt to generate an image. Be sure to consider the user's original message when making the prompt.",
+      ),
+    reasoning: z.string().describe('the reasoning for using this tool'),
+  }),
+}
+
+type Args = z.infer<typeof generateImageToolDefinition.parameters>
+
+export const generateImage: ToolFn<Args, string> = async ({ toolArgs }) => {
+  const response = await openai.images.generate({
+    model: 'dall-e-3',
+    prompt: toolArgs.prompt,
+    n: 1,
+    size: '1024x1024',
+  })
+
+  const url = response.data[0]?.url
+  if (!url) throw new Error('Image generation failed: no URL returned')
+
+  return url
+}
+```
+
+There's a subtle but important pattern here: the `reasoning` parameter. Every tool requires the LLM to explain *why* it's using that tool. This doesn't affect execution — the reasoning string is never used in the function body. But it forces the model to articulate its decision before acting, which improves tool selection accuracy. It's a lightweight form of chain-of-thought prompting baked into the tool schema itself.
+
+Tool dispatch happens in the central router — `src/toolRunner.ts`:
+
+```typescript
+export const runTool = async (
+  toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
+  userMessage: string,
+): Promise<string> => {
+  const input = {
+    userMessage,
+    toolArgs: JSON.parse(toolCall.function.arguments || '{}'),
+  }
+
+  switch (toolCall.function.name) {
+    case generateImageToolDefinition.name:
+      return generateImage(input)
+    case redditToolDefinition.name:
+      return reddit(input)
+    case dadJokeToolDefinition.name:
+      return dadJoke(input)
+    default:
+      throw new Error(`Unknown tool: ${toolCall.function.name}`)
+  }
+}
+```
+
+Yes, it's a switch statement. Not a registry pattern, not a plugin system, not a decorator-based auto-discovery mechanism. A switch statement. For three tools, this is the right level of abstraction. Adding a new tool means adding one case. When you have 30 tools, refactor to a map. Until then, simplicity wins.
+
+---
+
+### Step 6 — Memory and Persistence
+
+`src/memory.ts` handles conversation state:
+
+```typescript
+import { JSONFilePreset } from 'lowdb/node'
+import { v4 as uuidv4 } from 'uuid'
+import type { AIMessage } from '../types'
+
+export const addMessages = async (messages: AIMessage[]) => {
+  const db = await getDb()
+  const messagesWithMetadata = messages.map(addMetadata)
+  db.data.messages.push(...messagesWithMetadata)
+  await db.write()
+}
+
+export const getMessages = async () => {
+  const db = await getDb()
+  return db.data.messages.map(removeMetadata)
+}
+```
+
+The memory layer adds `id` and `createdAt` metadata to every message for debugging and auditability, then strips it before sending to the LLM. OpenAI's API doesn't know about these fields and would reject them, so `removeMetadata` ensures a clean separation between what we store and what we send.
+
+This is the simplest possible memory implementation: store everything, replay everything. The LLM sees the full conversation history on every turn. For a CLI tool, this works fine. For a production agent handling thousands of messages, you'd need summarization, sliding windows, or vector-based retrieval. But starting with "just replay everything" lets you validate the core loop before optimizing.
+
+---
+
+## Key Engineering Decisions
+
+### Why no framework?
+
+Frameworks like LangChain provide abstractions for chains, agents, memory, and tools. But abstractions have a cost: when something breaks, you're debugging the framework, not your logic. For learning — and for small, focused agents — the overhead isn't worth it. Every line in this codebase does something I can explain. That's the point.
+
+### Why sequential tool calls?
+
+Setting `parallel_tool_calls: false` means the model can only request one tool per turn. This simplifies the loop (no `Promise.all`, no partial failure handling) and makes the conversation history linear and easy to debug. The trade-off is latency: if the model needs two tools, it takes two round trips. For this use case, that's acceptable.
+
+### Why a JSON file instead of a real database?
+
+LowDB writes to a plain JSON file. It's not concurrent-safe, it doesn't scale, and it loads everything into memory. But it's zero-config, human-readable (you can open `db.json` and see exactly what happened), and perfect for a single-user CLI tool. The memory interface (`addMessages`, `getMessages`, `clearMessages`) is abstract enough that swapping in Postgres or Redis later requires changing one file.
+
+### What I deliberately did NOT implement
+
+- **Streaming.** The agent waits for complete responses. Streaming would improve perceived latency but complicates tool call detection.
+- **Multi-agent orchestration.** There's one agent, one loop. No planner agent delegating to specialist agents.
+- **Retry logic on LLM calls.** If OpenAI returns a 500, the agent crashes. In production, you'd want exponential backoff.
+- **Token counting.** The full history is sent every turn with no awareness of context window limits. For long conversations, you'd need truncation or summarization.
+
+---
+
+## What I Got Wrong / What I'd Improve
+
+**The tool runner should be a map, not a switch.** Even with three tools, the switch statement in `toolRunner.ts` is a code smell. Every new tool requires editing two files. A `Record<string, ToolFn>` map would let tools self-register and reduce the surface area for mistakes.
+
+**The system prompt is too generic.** Four sentences work for a demo, but a production agent needs more guidance: output format preferences, error handling instructions, tone calibration.
+
+**No input validation on tool arguments.** The Zod schemas define the expected shape, but `toolRunner.ts` does a raw `JSON.parse` without validating against the schema. If the LLM returns malformed arguments (rare but possible), the tool gets garbage input. I should be calling `.parse()` on the Zod schema before passing arguments to the tool function.
+
+**Memory grows unbounded.** Every message is stored forever. After a long session, you're sending thousands of tokens to the LLM on every turn — most of it irrelevant.
+
+**No observability.** There's no logging beyond the terminal spinner. In production, I'd want structured logs for every LLM call (tokens used, latency, model response), every tool execution (duration, success/failure), and every iteration of the loop. You can't improve what you can't measure.
+
+---
+
+## A Quick Real-World Example
+
+Let me make this concrete with something that happened recently.
+
+I was reviewing the output of an AI-powered feature in one of my projects — a tool-augmented agent similar to this one, but integrated into a product workflow. The agent was supposed to fetch data from an API, validate it against business rules, and return a structured response.
+
+It worked. Technically. The data was correct, the response was well-formatted. But the output was correct while the path was wrong: the agent chose a slower, more expensive endpoint instead of a cached one, because nothing in the tool description told the model that cost should influence the decision.
+
+That's when something clicked for me:
+
+**AI agents are not just about generating correct outputs — they're about making good decisions inside a system.** And those decisions are only as good as the context you give the model. A vague tool description isn't just sloppy — it's a production cost leak.
+
+This is why I obsess over `.describe()` strings in Zod schemas. This is why the `reasoning` parameter exists in every tool in this repo. These aren't academic choices — they come from watching agents make expensive mistakes in real systems.
+
+Understanding the loop matters more than using a framework, because the loop is where you see these problems. Frameworks hide them.
+
+---
+
+## How This Translates to Real Products
+
+I've seen this exact pattern emerge across multiple products — from internal tooling to customer-facing AI features. Regardless of the domain, the architecture converges to the same loop. The only things that change are the tools and the prompts.
+
+**Customer support bots.** Replace the dad joke tool with an order lookup tool and a refund processing tool. The agent loop handles the conversation flow; the tools handle the business logic.
+
+**Internal developer tools.** An agent that can query your database, check CI status, and post Slack messages. Each capability is a tool. The LLM decides which ones to use based on the developer's natural language request. This is one of the highest-ROI applications I've seen — developers get a natural language interface to their own infrastructure.
+
+**Content generation pipelines.** An agent that researches a topic (web search tool), generates a draft (LLM response), creates accompanying images (DALL-E tool), and formats the output. The iterative loop means it can refine its work across multiple passes.
+
+**Data analysis assistants.** Tools that query APIs, run SQL, or process CSVs. The agent fetches data, the LLM interprets it, and the user gets natural language insights.
+
+The key insight for product teams: **the agent loop is generic; the tools are where your business value lives.** You don't need to rebuild the orchestration layer for every use case. Once the loop is stable, most of the product leverage comes from better tools, sharper descriptions, and stronger guardrails.
+
+---
+
+## Lessons Learned About AI Agents
+
+> If you understand one thing about AI agents, it should be this:
+>
+> **An agent is just a loop.**
+>
+> A while loop that calls an LLM, checks if it wants to do something, does it, and repeats. That's it. Everything else — every framework, every orchestration layer, every "agentic AI platform" — is built on top of this.
+
+I keep coming back to this because it reframes every decision. When someone asks "should I use LangChain or CrewAI?", the real question is: "do I understand the loop well enough to know what these frameworks are doing for me?" If the answer is no, the framework becomes a black box — and black boxes are where production bugs hide.
+
+**Tool descriptions matter more than system prompts.** I spent more time writing Zod `.describe()` strings than the system prompt. The model reads tool descriptions when deciding which tool to call — vague descriptions lead to wrong tool selections.
+
+**Errors should flow through the conversation, not crash the process.** When a tool fails, the worst thing you can do is throw an unhandled exception. Feed the error back to the LLM as a tool message. The model is surprisingly good at recovering.
+
+**Persistence is not optional.** Even for a CLI tool, saving conversation history transformed the debugging experience. Instead of re-running prompts, I could inspect `db.json` to see exactly what the model received and returned at every step. Treat your message history as an audit log.
+
+**Start without parallelism.** Sequential tool execution is easier to reason about, easier to debug, and sufficient for most use cases. Add parallelism when you have profiling data that proves you need it — not before.
+
+---
+
+## Conclusion
+
+Most developers start with frameworks. Install LangChain, follow the quickstart, get a demo working in 20 minutes, and feel productive.
+
+I'd argue you should do the opposite.
+
+Build the loop yourself first. Feel the edges — the weird cases where the model returns neither content nor tool calls, the moment you realize unbounded memory is silently eating your token budget, the first time a tool fails and you have to decide whether to crash or recover.
+
+These are the moments that teach you agent architecture. Not the abstractions. Not the YAML configs. The raw loop.
+
+Once you understand it — *really* understand it — frameworks become a tool, not a crutch. You'll know what LangChain's `AgentExecutor` is doing because you've written your own. You'll know when to reach for CrewAI and when it's overkill because you've felt the boundaries of a single-agent loop.
+
+That's the difference between using AI and actually engineering it.
+
+The code is intentionally minimal — ~200 lines across 10 files. Fork it, add a tool, break something, fix it. That's how I learned. That's how you will too.
+
+Github repository: [https://github.com/migace/agent-ai-v1](https://github.com/migace/agent-ai-v1)
