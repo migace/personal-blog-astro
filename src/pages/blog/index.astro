@@ -9,6 +9,10 @@ import FormattedDate from "../../components/FormattedDate.astro";
 const posts = (await getCollection("blog")).sort(
   (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
 );
+
+const [featuredPost, ...regularPosts] = posts;
+
+const getTopics = (tags?: string[]) => tags?.slice(0, 3) ?? ["Engineering"];
 ---
 
 <!doctype html>
@@ -17,70 +21,223 @@ const posts = (await getCollection("blog")).sort(
     <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
     <style>
       main {
-        width: 960px;
+        width: 1120px;
       }
-      ul {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 2rem;
-        list-style-type: none;
+      .blog-intro {
+        padding: 1.5rem 0 2.5rem;
+        border-bottom: 1px solid rgb(var(--gray-light));
+        margin-bottom: 2.5rem;
+      }
+      .intro-copy {
+        width: 100%;
+        max-width: 820px;
+      }
+      .eyebrow {
+        margin: 0 0 0.85rem;
+        color: var(--accent);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .blog-intro h1 {
+        max-width: 820px;
         margin: 0;
-        padding: 0;
+        font-size: clamp(2rem, 3.2vw, 2.65rem);
+        line-height: 1.12;
+        letter-spacing: 0;
+        overflow-wrap: normal;
+        word-break: normal;
       }
-      ul li {
-        width: calc(50% - 1rem);
+      .intro-lead {
+        max-width: 720px;
+        margin: 1rem 0 0;
+        color: rgb(var(--gray-dark));
+        font-size: 1.05rem;
+        line-height: 1.7;
       }
-      ul li * {
-        text-decoration: none;
-        transition: 0.2s ease;
-      }
-      ul li:first-child {
+      .focus-list {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.8rem;
+        margin-top: 1.75rem;
         width: 100%;
-        margin-bottom: 1rem;
-        text-align: center;
       }
-      ul li:first-child img {
-        width: 100%;
+      .focus-item {
+        padding: 0.9rem 1rem;
+        border: 1px solid rgb(var(--gray-light));
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.74);
       }
-      ul li:first-child .title {
-        font-size: 2.369rem;
-      }
-      ul li img {
-        margin-bottom: 0.5rem;
-        border-radius: 12px;
-      }
-      ul li a {
+      .focus-item strong,
+      .focus-item span {
         display: block;
       }
-      .title {
-        margin: 0;
+      .focus-item strong {
         color: rgb(var(--black));
-        line-height: 1;
+        font-size: 0.82rem;
+        line-height: 1.35;
+      }
+      .focus-item span {
+        margin-top: 0.35rem;
+        color: rgb(var(--gray));
+        font-size: 0.78rem;
+        line-height: 1.5;
+      }
+      .featured {
+        margin-bottom: 3rem;
+      }
+      .featured a {
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+        gap: 2rem;
+        align-items: center;
+        color: inherit;
+        text-decoration: none;
+      }
+      .featured img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(var(--gray), 18%);
+      }
+      .featured-copy {
+        min-width: 0;
+      }
+      .featured-label {
+        margin: 0 0 0.75rem;
+        color: var(--accent);
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+      .featured .title {
+        font-size: clamp(1.7rem, 3vw, 2.25rem);
+        line-height: 1.08;
+      }
+      .description {
+        margin: 0.9rem 0 0;
+        color: rgb(var(--gray-dark));
+        font-size: 0.95rem;
+        line-height: 1.65;
+      }
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem 0.6rem;
+        align-items: center;
+        margin-top: 1rem;
       }
       .date {
         margin: 0;
         color: rgb(var(--gray));
+        font-size: 0.9rem;
+        line-height: 1.35;
       }
-      ul li a:hover h4,
-      ul li a:hover .date {
-        color: rgb(var(--accent));
+      .topic {
+        display: inline-flex;
+        align-items: center;
+        min-height: 1.6rem;
+        padding: 0 0.55rem;
+        border: 1px solid rgba(var(--gray), 20%);
+        border-radius: 999px;
+        color: rgb(var(--gray-dark));
+        background: rgba(255, 255, 255, 0.72);
+        font-size: 0.72rem;
+        font-weight: 700;
+        line-height: 1;
       }
-      ul a:hover img {
-        box-shadow: var(--box-shadow);
+      .posts-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 2.25rem 2rem;
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+      .posts-grid li {
+        min-width: 0;
+      }
+      .posts-grid li * {
+        text-decoration: none;
+        transition:
+          color 0.2s ease,
+          border-color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+      .post-card {
+        display: block;
+        color: inherit;
+      }
+      .post-card img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+        margin-bottom: 0.9rem;
+        border-radius: 8px;
+        box-shadow: 0 1px 0 rgba(var(--gray), 12%);
+      }
+      .title {
+        margin: 0;
+        color: rgb(var(--black));
+        font-size: clamp(1.18rem, 2vw, 1.35rem);
+        font-weight: 700;
+        line-height: 1.12;
+      }
+      .post-card .description {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+      }
+      .post-card:hover .title,
+      .post-card:hover .date,
+      .featured a:hover .title,
+      .featured a:hover .date {
+        color: rgb(var(--accent-dark));
+      }
+      .post-card:hover img,
+      .featured a:hover img {
+        box-shadow: 0 12px 34px rgba(var(--gray), 24%);
+      }
+      @media (max-width: 860px) {
+        .featured a {
+          grid-template-columns: 1fr;
+        }
+        .blog-intro {
+          padding-top: 0.5rem;
+        }
+        .focus-list {
+          grid-template-columns: 1fr;
+        }
+        .featured-copy {
+          order: -1;
+        }
       }
       @media (max-width: 720px) {
-        ul {
-          gap: 0.5em;
+        .blog-intro {
+          margin-bottom: 2rem;
+          padding-bottom: 2rem;
         }
-        ul li {
-          width: 100%;
-          text-align: center;
+        .blog-intro h1 {
+          font-size: 1.85rem;
         }
-        ul li:first-child {
-          margin-bottom: 0;
+        .featured {
+          margin-bottom: 2rem;
         }
-        ul li:first-child .title {
-          font-size: 1.563em;
+        .featured a {
+          gap: 1rem;
+        }
+        .featured .title {
+          font-size: 1.55rem;
+        }
+        .posts-grid {
+          grid-template-columns: 1fr;
+          gap: 2rem;
         }
       }
     </style>
@@ -88,22 +245,87 @@ const posts = (await getCollection("blog")).sort(
   <body>
     <Header />
     <main>
+      <section class="blog-intro" aria-labelledby="blog-title">
+        <div class="intro-copy">
+          <p class="eyebrow">Engineering notes by Michał Gacek</p>
+          <h1 id="blog-title">
+            Building reliable software with AI, architecture, and pragmatic
+            engineering.
+          </h1>
+          <p class="intro-lead">
+            Notes from real projects: testing strategy, TypeScript systems,
+            product architecture, developer workflows, and practical uses of AI
+            beyond demos.
+          </p>
+        </div>
+        <div class="focus-list" aria-label="Writing focus">
+          <div class="focus-item">
+            <strong>AI-assisted engineering</strong>
+            <span>Agents, local workflows, automation, and evaluation.</span>
+          </div>
+          <div class="focus-item">
+            <strong>Software architecture</strong>
+            <span>Product modeling, backend boundaries, and delivery tradeoffs.</span>
+          </div>
+          <div class="focus-item">
+            <strong>Quality and DX</strong>
+            <span>Playwright, TypeScript, CI feedback, and maintainable tests.</span>
+          </div>
+        </div>
+      </section>
       <section>
-        <ul>
-          {
-            posts.map((post) => (
-              <li>
-                <a href={`/blog/${post.slug}/`}>
+        {
+          featuredPost && (
+            <article class="featured">
+              <a href={`/blog/${featuredPost.id}/`}>
+                {featuredPost.data.heroImage && (
                   <img
                     width={720}
-                    height={360}
-                    src={post.data.heroImage}
+                    height={405}
+                    src={featuredPost.data.heroImage}
                     alt=""
                   />
+                )}
+                <div class="featured-copy">
+                  <p class="featured-label">Featured article</p>
+                  <h2 class="title">{featuredPost.data.title}</h2>
+                  <p class="description">{featuredPost.data.description}</p>
+                  <div class="meta">
+                    <p class="date">
+                      <FormattedDate date={featuredPost.data.pubDate} />
+                    </p>
+                    {getTopics(featuredPost.data.tags).map((topic) => (
+                      <span class="topic">{topic}</span>
+                    ))}
+                  </div>
+                </div>
+              </a>
+            </article>
+          )
+        }
+        <ul class="posts-grid">
+          {
+            regularPosts.map((post) => (
+              <li>
+                <a class="post-card" href={`/blog/${post.id}/`}>
+                  {post.data.heroImage && (
+                    <img
+                      width={720}
+                      height={405}
+                      src={post.data.heroImage}
+                      alt=""
+                    />
+                  )}
                   <h4 class="title">{post.data.title}</h4>
-                  <p class="date">
-                    <FormattedDate date={post.data.pubDate} />
-                  </p>
+                  <p class="description">{post.data.description}</p>
+                  <div class="meta">
+                    <p class="date">
+                      <FormattedDate date={post.data.pubDate} />
+                    </p>
+                    {getTopics(post.data.tags).map((topic) => (
+                      <span class="topic">{topic}</span>
+                    ))}
+                  </div>
                 </a>
               </li>
             ))

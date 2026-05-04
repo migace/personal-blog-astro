@@ -5,15 +5,14 @@
  */
 
 :root {
-  --accent: #1e293b;
-  --accent-dark: #0f172a;
+  --accent: #2563eb;
+  --accent-dark: #1e3a8a;
   --black: 15, 18, 25;
-  --gray: 96, 115, 159;
-  --gray-light: 229, 233, 240;
-  --gray-dark: 34, 41, 57;
-  --gray-gradient: rgba(var(--gray-light), 50%), #fff;
-  --box-shadow: 0 2px 6px rgba(var(--gray), 25%),
-    0 8px 24px rgba(var(--gray), 33%), 0 16px 32px rgba(var(--gray), 33%);
+  --gray: 100, 116, 139;
+  --gray-light: 226, 232, 240;
+  --gray-dark: 51, 65, 85;
+  --gray-gradient: rgba(248, 250, 252, 96%), #fff;
+  --box-shadow: 0 8px 30px rgba(var(--gray), 18%);
 }
 @font-face {
   font-family: "Atkinson";
@@ -39,7 +38,7 @@ body {
   word-wrap: break-word;
   overflow-wrap: break-word;
   color: rgb(var(--gray-dark));
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.7;
 }
 main {
@@ -56,22 +55,22 @@ h5,
 h6 {
   margin: 0 0 0.5rem 0;
   color: rgb(var(--black));
-  line-height: 1.2;
+  line-height: 1.16;
 }
 h1 {
-  font-size: 3.052em;
+  font-size: clamp(2.15rem, 5vw, 2.8rem);
 }
 h2 {
-  font-size: 2.441em;
+  font-size: clamp(1.65rem, 3vw, 2rem);
 }
 h3 {
-  font-size: 1.953em;
+  font-size: 1.45rem;
 }
 h4 {
-  font-size: 1.563em;
+  font-size: 1.2rem;
 }
 h5 {
-  font-size: 1.25em;
+  font-size: 1.05rem;
 }
 strong,
 b {

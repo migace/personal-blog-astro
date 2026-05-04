@@ -1,0 +1,329 @@
+---
+title: "How I Built an LLM Workflow That Stabilized E2E Tests in a Real Project"
+description: "Flaky E2E tests are silent killers of team velocity. Here is how I turned an LLM from a code generator into a participant in a diagnostic process — using local skills, knowledge files, and anti-flake rules grounded in a real Playwright + Qase regression suite."
+pubDate: "May 4 2026"
+heroImage: "/e2e-ai-case-study.png"
+tags: ["AI workflow", "Playwright", "Quality"]
+---
+
+*How turning team knowledge into an executable workflow reduces flakiness, speeds up diagnosis, and keeps a regression suite trustworthy as it grows.*
+
+---
+
+Flaky E2E tests are silent killers of team velocity.
+
+They waste CI minutes, create false alarms, slow down releases, and gradually destroy trust in the entire test suite. Over the past month, I was not just writing Playwright tests. I was building an LLM-assisted workflow that helped diagnose failures, reduce flakiness, and maintain a consistent standard for regression tests in a real production project.
+
+In the project, we use Playwright, regression tests, Qase integration, and several flows that are naturally difficult to test: login, modals, payments, iframes, users with different account states, dynamic application responses, external dependencies, and CI.
+
+At first, the LLM helped me in a point-by-point way: *"Why is this test failing?"*, *"How should I fix this selector?"*, *"How do I write this assertion?"* It quickly became clear that this was not enough.
+
+The real breakthrough came when I stopped treating the LLM as a code generator and started treating it as a participant in a diagnostic process that had to follow the project's local rules.
+
+---
+
+## The Problem: Flaky E2E Is Not One Type of Bug
+
+Flaky tests rarely have a single cause.
+
+Sometimes the test clicks too early. Sometimes a modal blocks the screen. Sometimes a selector was based on text that changed after a refactor. Sometimes `networkidle` never arrives because the app has background polling. Sometimes a test passes locally, but in CI it hits a slower backend, a rate limit, or delayed rendering.
+
+The worst part is that quick "fixes" often only move the problem somewhere else.
+
+Bad:
+
+```ts
+await page.waitForTimeout(3000)
+```
+
+The test starts passing. For a while.
+
+Then CI slows down, the backend responds later, a modal appears one second later, and the test becomes flaky again. Except now it is harder to diagnose because the test is full of magic sleeps.
+
+I needed more than fixing tests. I needed a repeatable way of working.
+
+---
+
+## The Results
+
+This was not an experiment on a toy repository. The workflow was used in a real regression suite connected with Qase and Playwright.
+
+At the time of the summary:
+
+- **161 regression E2E tests** were linked to Qase test cases through QaseID,
+- only **2 high-priority Qase cases** still had no E2E implementation,
+- reusable **skills** were created for writing, debugging, and reviewing E2E tests,
+- **anti-flake rules** were moved from "memory in someone's head" into repository knowledge files,
+- **failure diagnosis became more structured**: find the test, run it, classify the error, inspect related code, explain the root cause, and only then apply the fix.
+
+I am intentionally not saying that the LLM "removed all flaky tests." That would be dishonest. The real gain was different: fewer random fixes, faster diagnosis, and a repeatable standard for working with E2E.
+
+---
+
+## First Lesson: An LLM Without Project Context Produces Fragile Solutions
+
+An LLM knows Playwright well. But it does not know my project.
+
+It does not know which helpers already exist. It does not know that in this repo we do not use `networkidle`. It does not know that negative visibility assertions must go through a dedicated helper. It does not know that regression tests require a QaseID. It does not know which flow must be serialized because it touches an external payment sandbox.
+
+If we only give it a terminal error, we often get a fix that looks reasonable in isolation but does not fit the system.
+
+That is why I started building a local workflow based on two elements:
+
+- **skills** for specific tasks,
+- **knowledge files** with E2E testing rules.
+
+---
+
+## Where and How I Implemented It
+
+The workflow was implemented directly inside the repository, not as a separate LangChain app, custom VS Code plugin, or standalone CLI wrapper.
+
+I used repository-level agent skills and knowledge files:
+
+```
+.agents/
+  skills/
+    fix-e2e/
+      SKILL.md
+    regression-e2e/
+      SKILL.md
+  knowledge/
+    e2e-testing.md
+    e2e-regression.md
+```
+
+**Skills** are Markdown instructions used by the coding agent while working in the repo. They define behavior for a specific task: how to debug a failing test, how to write a regression test, which files to read first, which helpers to use, and which anti-flake rules to follow.
+
+**Knowledge files** act as project memory. They contain Playwright conventions, helper catalogs, anti-patterns, naming rules, Qase conventions, and examples from the real codebase.
+
+The setup was deliberately simple:
+
+- no custom LLM orchestration framework,
+- no separate service,
+- no fine-tuning,
+- no complex agent infrastructure.
+
+Just local instructions in the repository, grounded in the codebase and used consistently during E2E work.
+
+---
+
+## The `/fix-e2e` Skill: LLM as a Debugger, Not a Guessing Machine
+
+The first important skill focused on fixing failing E2E tests.
+
+The assumption was simple: the LLM should not edit the test immediately. First, it needs to go through a diagnostic procedure.
+
+The workflow looked roughly like this:
+
+1. Find the test by file name, path, or title.
+2. Read the entire test.
+3. Run it locally.
+4. Classify the type of failure.
+5. Read related helpers or application code.
+6. Identify the root cause.
+7. Present the diagnosis.
+8. Apply the fix only after approval.
+9. Run the test again.
+
+This changes the dynamic of the work.
+
+The LLM does not "fix the test." It answers questions:
+
+- is this an assertion failure?
+- did the selector disappear from the component?
+- did the test capture a runtime JavaScript error?
+- is this a race condition?
+- is the test using the wrong waiter?
+- is the bug in the app rather than in the test?
+
+In practice, this distinction matters a lot. With E2E tests, it is easy to weaken a test so that it passes. It is much harder to preserve its intent and fix the actual cause.
+
+---
+
+## The `regression-e2e` Skill: LLM as a Guardian of Standards
+
+The second skill focused on writing and extending regression tests.
+
+Here, the most important part was enforcing local conventions:
+
+- every regression test has a clearly described scenario,
+- every test has an annotation with QaseID,
+- we use a Profiler to catch critical JavaScript errors,
+- we rely on existing helpers,
+- selectors are defined through `data-testid`,
+- before clicking, we assert that the element is visible,
+- we do not add arbitrary timeouts,
+- we do not create new helpers if an appropriate one already exists.
+
+This sounds like documentation. And that is exactly what it is.
+
+The difference is that the documentation is not just sitting in the repo. **It is actively used by the LLM while working.**
+
+That was one of the most important insights from the whole month:
+
+> If you want an LLM to work well in a project, good prompts are not enough. You need local project memory: rules, helpers, anti-patterns, and examples.
+
+---
+
+## Knowledge Files: Team Memory for the LLM
+
+Over time, I extracted separate knowledge files for E2E.
+
+One described general Playwright testing rules. The other described conventions specific to regression tests.
+
+This is where rules like these lived:
+
+- do not use `waitForLoadState('networkidle')`,
+- do not use magic sleeps before assertions,
+- use deterministic waits,
+- check negative visibility through a helper,
+- check optional elements through a helper with a timeout,
+- click only after `toBeVisible()`,
+- use typed selectors and `createLocators()`,
+- mark tests that touch payments or account creation as serial,
+- long operations must have a justified timeout and a comment.
+
+Important point: these rules did not come from theory. They were distilled from real failures.
+
+Every rule had a concrete incident behind it: a CI timeout, a race condition, an unstable modal, an external sandbox, a fragile selector, or a falsely passing negative assertion.
+
+---
+
+## Example: `networkidle` Looks Good Until It Does Not
+
+One classic source of flakiness is `networkidle`.
+
+On paper, it sounds reasonable: let's wait until the network becomes quiet. In a real application, it can become a trap. Analytics, polling, keep-alives, or requests triggered after render can make the test wait too long or finish waiting at the wrong moment.
+
+Bad:
+
+```ts
+await page.waitForLoadState('networkidle')
+```
+
+Good:
+
+```ts
+await waitForAppToLoad(page)
+await expect(page.getByTestId('nav.workspace.profile.email')).toBeVisible()
+```
+
+This is less "magical" and more connected to the test's intent.
+
+I do not care about the abstract state of the network. I care whether the app is ready for interaction and whether the element I need is visible.
+
+---
+
+## Example: Negative Assertions Can Create False Confidence
+
+Another common problem is this:
+
+Bad:
+
+```ts
+await expect(locator).not.toBeVisible()
+```
+
+This assertion can pass immediately, before the element even has a chance to appear. In UI tests, this can produce a false signal: the test passes, but it did not verify the actual behavior.
+
+Good:
+
+```ts
+await expectNotVisible(ui.someElement)
+```
+
+The point is not that the helper is complicated. The point is that the test code starts expressing a project decision: negative visibility should wait for the state to settle, not pass by accident.
+
+For the LLM, this matters too. If the skill says *"use `expectNotVisible()`"*, the model does not invent its own variant every time.
+
+---
+
+## Example: The Profiler Turns a Failing Test Into a Better Signal
+
+In E2E tests, the user path may pass, while the application throws a JavaScript error along the way. Without additional monitoring, such a test can look green.
+
+That is why we use a Profiler in tests to collect critical browser errors.
+
+The pattern is simple:
+
+```ts
+const profiler = new Profiler().start(page)
+
+// test logic
+
+profiler.stop()
+expect(profiler.criticalErrors.length).toEqual(0)
+```
+
+This helps catch cases where the UI "somehow works," but a runtime error appears underneath.
+
+For the LLM workflow, this also matters, because the `/fix-e2e` skill classifies such errors differently from normal assertion failures. First, we need to understand whether the test failed because the user cannot see an element, or because the app produced a critical background error.
+
+---
+
+## The Biggest Value: Fewer Decisions Made From Scratch
+
+After a few weeks, I noticed that the biggest benefit was not code generation itself.
+
+The biggest benefit was that **many decisions no longer had to be made from scratch**.
+
+When a failing test appeared, the LLM had a procedure. When a regression test had to be added, it had a template. When an optional modal appeared, it had a helper. When a test required a user with an active plan, it knew which helper to use. When a flow touched an external sandbox, it knew not to run it blindly in parallel.
+
+This speeds up the work, but it also reduces chaos.
+
+In E2E tests, chaos is expensive. Two seemingly harmless tests can interfere with each other. One sleep can add minutes to the suite. One unstable selector can undermine trust in the entire regression suite.
+
+---
+
+## What Worked Best
+
+Three things worked especially well.
+
+**First: separating writing tests from debugging tests.**
+
+These are different modes of work. When writing a test, you think about the user flow, regression coverage, and readability. When debugging a test, you think about symptoms, the source of the failure, and the smallest change that preserves the test's intent.
+
+**Second: requiring a diagnosis before making a change.**
+
+This reduces the temptation to patch quickly. The LLM first had to explain what happened, why it happened, and what evidence supported the conclusion.
+
+**Third: documenting anti-patterns.**
+
+"Write good tests" means nothing. Concrete rules are much more effective:
+
+- do not use `networkidle`,
+- do not click without first asserting visibility,
+- do not add a timeout without a reason,
+- do not use `isVisible()` as a waiter,
+- do not weaken an assertion just to make the test pass.
+
+---
+
+## What the LLM Still Does Not Replace
+
+This workflow did not make the LLM "take over testing."
+
+Product knowledge is still needed. You still need to understand whether a failing test points to an application bug or a test bug. You still need to distinguish a flaky symptom from the root cause. You still need to know which assertions are business-critical and which are just accidental UI details.
+
+The LLM is very good at working with context, comparing patterns, reading errors, proposing changes, and following a checklist.
+
+But a human still has to set the standard.
+
+Without that standard, an LLM can very quickly produce a lot of tests that nobody trusts.
+
+---
+
+## The Main Takeaway
+
+After a month of working with E2E tests, I am convinced that the best use of LLMs in testing is not to "write a test."
+
+The best use is to **turn team knowledge into an executable workflow**.
+
+Skills, knowledge files, helper catalogs, anti-flake rules, templates, and diagnostic procedures make the LLM behave like a tool embedded in the project, not like an external code generator.
+
+And that is the difference between **AI-assisted coding** and **AI-assisted engineering**.
+
+In the first case, you get code faster.
+
+In the second, you build a system that helps maintain quality as the project grows, the number of tests increases, and CI needs to stay trustworthy.
