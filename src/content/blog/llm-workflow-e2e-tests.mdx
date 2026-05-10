@@ -116,28 +116,139 @@ The assumption was simple: the LLM should not edit the test immediately. First, 
 
 The workflow looked roughly like this:
 
-1. Find the test by file name, path, or title.
-2. Read the entire test.
-3. Run it locally.
-4. Classify the type of failure.
-5. Read related helpers or application code.
-6. Identify the root cause.
-7. Present the diagnosis.
-8. Apply the fix only after approval.
-9. Run the test again.
+<ol class="diag-flow">
+  <li><span class="diag-flow__title">Find the test</span><span class="diag-flow__desc">by file name, path, or title.</span></li>
+  <li><span class="diag-flow__title">Read the entire test</span><span class="diag-flow__desc">end to end, before forming any hypothesis.</span></li>
+  <li><span class="diag-flow__title">Run it locally</span><span class="diag-flow__desc">to reproduce the failure on the developer's machine.</span></li>
+  <li><span class="diag-flow__title">Classify the failure</span><span class="diag-flow__desc">assertion, selector, race, runtime error, environment.</span></li>
+  <li><span class="diag-flow__title">Read related code</span><span class="diag-flow__desc">helpers, components, or application logic involved.</span></li>
+  <li><span class="diag-flow__title">Identify the root cause</span><span class="diag-flow__desc">grounded in evidence, not in plausible guesses.</span></li>
+  <li><span class="diag-flow__title">Present the diagnosis</span><span class="diag-flow__desc">in plain language, with the reasoning visible.</span></li>
+  <li><span class="diag-flow__title">Apply the fix</span><span class="diag-flow__desc">only after the diagnosis is approved.</span></li>
+  <li><span class="diag-flow__title">Run the test again</span><span class="diag-flow__desc">to confirm the fix and watch for new symptoms.</span></li>
+</ol>
 
 This changes the dynamic of the work.
 
 The LLM does not "fix the test." It answers questions:
 
-- is this an assertion failure?
-- did the selector disappear from the component?
-- did the test capture a runtime JavaScript error?
-- is this a race condition?
-- is the test using the wrong waiter?
-- is the bug in the app rather than in the test?
+<ul class="diag-questions">
+  <li>Is this an assertion failure?</li>
+  <li>Did the selector disappear from the component?</li>
+  <li>Did the test capture a runtime JavaScript error?</li>
+  <li>Is this a race condition?</li>
+  <li>Is the test using the wrong waiter?</li>
+  <li>Is the bug in the app rather than in the test?</li>
+</ul>
 
-In practice, this distinction matters a lot. With E2E tests, it is easy to weaken a test so that it passes. It is much harder to preserve its intent and fix the actual cause.
+<aside class="diag-pullquote">
+  With E2E tests, it is easy to weaken a test so that it passes. It is much harder to preserve its intent and fix the actual cause.
+</aside>
+
+<style>{`
+  .prose .diag-flow {
+    list-style: none;
+    counter-reset: diag;
+    padding: 0;
+    margin: 1.75em 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+  }
+  .prose .diag-flow li {
+    counter-increment: diag;
+    position: relative;
+    padding: 0.85rem 0.95rem 0.85rem 2.6rem;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0) 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .prose .diag-flow li:hover {
+    border-color: rgba(37, 99, 235, 0.45);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.1);
+  }
+  .prose .diag-flow li::before {
+    content: counter(diag);
+    position: absolute;
+    left: 0.7rem;
+    top: 0.85rem;
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  }
+  .prose .diag-flow__title {
+    font-weight: 600;
+    color: rgb(var(--gray-dark));
+    font-size: 0.96rem;
+    line-height: 1.25;
+  }
+  .prose .diag-flow__desc {
+    color: rgb(var(--gray));
+    font-size: 0.86rem;
+    line-height: 1.4;
+  }
+
+  .prose .diag-questions {
+    list-style: none;
+    padding: 1.1rem 1.2rem;
+    margin: 1.5em 0;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background:
+      linear-gradient(180deg, rgba(248, 250, 252, 0.7) 0%, rgba(248, 250, 252, 0) 100%);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.5rem 1.25rem;
+  }
+  .prose .diag-questions li {
+    position: relative;
+    padding-left: 1.4rem;
+    color: rgb(var(--gray-dark));
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+  .prose .diag-questions li::before {
+    content: "?";
+    position: absolute;
+    left: 0;
+    top: 0.05rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 50%;
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--accent-dark);
+    font-weight: 700;
+    font-size: 0.74rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .prose .diag-pullquote {
+    margin: 1.75em 0;
+    padding: 1rem 1.2rem;
+    border-left: 3px solid var(--accent);
+    background: rgba(37, 99, 235, 0.06);
+    border-radius: 0 10px 10px 0;
+    color: rgb(var(--gray-dark));
+    font-size: 1.02rem;
+    line-height: 1.55;
+  }
+`}</style>
 
 ---
 
@@ -292,11 +403,81 @@ This reduces the temptation to patch quickly. The LLM first had to explain what 
 
 "Write good tests" means nothing. Concrete rules are much more effective:
 
-- do not use `networkidle`,
-- do not click without first asserting visibility,
-- do not add a timeout without a reason,
-- do not use `isVisible()` as a waiter,
-- do not weaken an assertion just to make the test pass.
+<div class="antipatterns">
+  <div class="antipatterns__col">
+    <div class="antipatterns__label">Anti-patterns to avoid</div>
+    <ul class="antipatterns__list">
+      <li><span class="antipatterns__mark" aria-hidden="true">×</span>Do not use <code>networkidle</code></li>
+      <li><span class="antipatterns__mark" aria-hidden="true">×</span>Do not click without first asserting visibility</li>
+      <li><span class="antipatterns__mark" aria-hidden="true">×</span>Do not add a timeout without a reason</li>
+      <li><span class="antipatterns__mark" aria-hidden="true">×</span>Do not use <code>isVisible()</code> as a waiter</li>
+      <li><span class="antipatterns__mark" aria-hidden="true">×</span>Do not weaken an assertion just to make the test pass</li>
+    </ul>
+  </div>
+</div>
+
+<style>{`
+  .antipatterns {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin: 1.5em 0 1.75em;
+  }
+  .antipatterns__col {
+    background: linear-gradient(180deg, #ffffff 0%, rgba(254, 242, 242, 0.6) 100%);
+    border: 1px solid rgba(220, 38, 38, 0.18);
+    border-radius: 14px;
+    padding: 1.25rem 1.25rem 1.1rem;
+    box-shadow:
+      0 1px 2px rgba(15, 18, 25, 0.04),
+      0 8px 24px rgba(220, 38, 38, 0.06);
+  }
+  .antipatterns__label {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: #b91c1c;
+    margin-bottom: 0.85rem;
+  }
+  .antipatterns__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .antipatterns__list li {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.4rem 0;
+    color: rgb(var(--gray-dark));
+    font-size: 0.98rem;
+    line-height: 1.4;
+    border-bottom: 1px dashed rgba(220, 38, 38, 0.12);
+  }
+  .antipatterns__list li:last-child {
+    border-bottom: none;
+  }
+  .antipatterns__mark {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.08);
+  }
+  .antipatterns__list code {
+    background: rgba(220, 38, 38, 0.08) !important;
+    color: #b91c1c !important;
+  }
+`}</style>
 
 ---
 

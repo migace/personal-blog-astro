@@ -52,6 +52,181 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
 				font-style: italic;
 			}
 		</style>
+		<style is:global>
+			/* === Interactive code block === */
+			.prose .code-card {
+				--code-bg: #0b1020;
+				--code-border: rgba(148, 163, 184, 0.18);
+				--code-fg: #e2e8f0;
+				--code-muted: #94a3b8;
+				position: relative;
+				margin: 1.75em 0;
+				border-radius: 14px;
+				background: linear-gradient(180deg, #0b1020 0%, #0a0f1c 100%);
+				border: 1px solid var(--code-border);
+				box-shadow:
+					0 1px 0 rgba(255, 255, 255, 0.03) inset,
+					0 10px 30px rgba(15, 18, 25, 0.18);
+				overflow: hidden;
+				transition: box-shadow 0.25s ease, transform 0.25s ease;
+			}
+			.prose .code-card:hover {
+				box-shadow:
+					0 1px 0 rgba(255, 255, 255, 0.05) inset,
+					0 20px 50px rgba(37, 99, 235, 0.18);
+			}
+			.prose .code-card__bar {
+				display: flex;
+				align-items: center;
+				gap: 0.6rem;
+				padding: 0.55rem 0.85rem;
+				background: linear-gradient(
+					180deg,
+					rgba(255, 255, 255, 0.04) 0%,
+					rgba(255, 255, 255, 0) 100%
+				);
+				border-bottom: 1px solid var(--code-border);
+				font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+				font-size: 0.78rem;
+				color: var(--code-muted);
+			}
+			.prose .code-card__dots {
+				display: inline-flex;
+				gap: 6px;
+				margin-right: 0.35rem;
+			}
+			.prose .code-card__dots span {
+				width: 11px;
+				height: 11px;
+				border-radius: 50%;
+				background: #2a3346;
+				box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+			}
+			.prose .code-card__dots span:nth-child(1) { background: #ff5f57; }
+			.prose .code-card__dots span:nth-child(2) { background: #febc2e; }
+			.prose .code-card__dots span:nth-child(3) { background: #28c840; }
+			.prose .code-card__lang {
+				display: inline-flex;
+				align-items: center;
+				padding: 2px 8px;
+				border-radius: 999px;
+				background: rgba(37, 99, 235, 0.14);
+				color: #93c5fd;
+				font-weight: 600;
+				letter-spacing: 0.04em;
+				text-transform: uppercase;
+				font-size: 0.68rem;
+			}
+			.prose .code-card__file {
+				color: var(--code-muted);
+				font-weight: 500;
+				white-space: nowrap;
+				overflow: hidden;
+				text-overflow: ellipsis;
+			}
+			.prose .code-card__spacer { flex: 1; }
+			.prose .code-card__btn {
+				appearance: none;
+				border: 1px solid var(--code-border);
+				background: rgba(255, 255, 255, 0.03);
+				color: var(--code-fg);
+				font-family: inherit;
+				font-size: 0.72rem;
+				padding: 4px 9px;
+				border-radius: 7px;
+				cursor: pointer;
+				display: inline-flex;
+				align-items: center;
+				gap: 5px;
+				transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+			}
+			.prose .code-card__btn:hover {
+				background: rgba(37, 99, 235, 0.16);
+				border-color: rgba(37, 99, 235, 0.5);
+				color: #dbeafe;
+			}
+			.prose .code-card__btn[data-state="ok"] {
+				background: rgba(34, 197, 94, 0.15);
+				border-color: rgba(34, 197, 94, 0.45);
+				color: #bbf7d0;
+			}
+			.prose .code-card__btn svg {
+				width: 12px;
+				height: 12px;
+			}
+
+			.prose .code-card pre {
+				margin: 0 !important;
+				border-radius: 0 !important;
+				background: transparent !important;
+				padding: 1rem 1.1rem !important;
+				font-size: 0.92rem;
+				overflow-x: auto;
+				counter-reset: line;
+			}
+			.prose .code-card pre code > .line {
+				display: inline-block;
+				width: 100%;
+				padding: 0 0.4rem;
+				border-left: 2px solid transparent;
+				transition: background 0.12s ease, border-color 0.12s ease;
+			}
+			.prose .code-card pre code > .line:hover {
+				background: rgba(148, 163, 184, 0.07);
+			}
+			.prose .code-card[data-numbered="true"] pre code > .line::before {
+				counter-increment: line;
+				content: counter(line);
+				display: inline-block;
+				width: 1.8rem;
+				margin-right: 0.9rem;
+				text-align: right;
+				color: rgba(148, 163, 184, 0.45);
+				user-select: none;
+			}
+			.prose .code-card pre code > .line.is-marked {
+				background: rgba(37, 99, 235, 0.16);
+				border-left-color: var(--accent);
+			}
+
+			.prose .code-card[data-collapsible="true"][data-collapsed="true"] pre {
+				max-height: 280px;
+				overflow: hidden;
+			}
+			.prose .code-card[data-collapsible="true"][data-collapsed="true"]::after {
+				content: "";
+				position: absolute;
+				left: 0;
+				right: 0;
+				bottom: 38px;
+				height: 80px;
+				background: linear-gradient(180deg, rgba(10, 15, 28, 0) 0%, #0a0f1c 90%);
+				pointer-events: none;
+			}
+			.prose .code-card__expand {
+				display: none;
+				width: 100%;
+				border: none;
+				border-top: 1px solid var(--code-border);
+				background: rgba(255, 255, 255, 0.02);
+				color: #93c5fd;
+				font-family: inherit;
+				font-size: 0.78rem;
+				padding: 0.55rem;
+				cursor: pointer;
+				letter-spacing: 0.03em;
+			}
+			.prose .code-card__expand:hover { background: rgba(37, 99, 235, 0.12); }
+			.prose .code-card[data-collapsible="true"] .code-card__expand { display: block; }
+
+			.prose code:not(pre code) {
+				background: rgba(37, 99, 235, 0.1);
+				color: var(--accent-dark);
+				padding: 1px 6px;
+				border-radius: 6px;
+				font-size: 0.92em;
+			}
+		</style>
 	</head>
 
 	<body>
@@ -81,5 +256,127 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
 			</article>
 		</main>
 		<Footer />
+		<script is:inline>
+			(() => {
+				const COLLAPSE_THRESHOLD = 14;
+
+				const ICON_COPY =
+					'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+				const ICON_OK =
+					'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+				const ICON_HASH =
+					'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></svg>';
+
+				function detectFilename(code) {
+					const first = code.split("\n").slice(0, 2).join("\n");
+					const m = first.match(/(?:from\s+["'])([^"']+?)(?:["'])/);
+					if (m) return m[1].split("/").pop();
+					return "";
+				}
+
+				function wrapLines(pre) {
+					const code = pre.querySelector("code");
+					if (!code || code.dataset.lined === "1") return;
+
+					const hasExistingLines = code.querySelector(":scope > .line");
+					if (!hasExistingLines) {
+						const html = code.innerHTML;
+						const lines = html.split(/\n/);
+						code.innerHTML = lines
+							.map((l) => '<span class="line">' + (l.length ? l : "&nbsp;") + "</span>")
+							.join("\n");
+					}
+					code.dataset.lined = "1";
+
+					code.querySelectorAll(":scope > .line").forEach((line) => {
+						line.addEventListener("click", () => line.classList.toggle("is-marked"));
+					});
+				}
+
+				document.querySelectorAll(".prose pre").forEach((pre) => {
+					if (pre.parentElement && pre.parentElement.classList.contains("code-card")) return;
+
+					const codeEl = pre.querySelector("code");
+					const raw = codeEl ? codeEl.textContent || "" : pre.textContent || "";
+					const lineCount = raw.split("\n").length;
+
+					let lang = "";
+					if (codeEl) {
+						const cls = (codeEl.className || "").match(/language-([\w-]+)/);
+						if (cls) lang = cls[1];
+					}
+					if (!lang && pre.dataset.language) lang = pre.dataset.language;
+
+					const filename = detectFilename(raw);
+
+					const card = document.createElement("div");
+					card.className = "code-card";
+					card.dataset.numbered = "false";
+					if (lineCount > COLLAPSE_THRESHOLD) {
+						card.dataset.collapsible = "true";
+						card.dataset.collapsed = "true";
+					}
+
+					const bar = document.createElement("div");
+					bar.className = "code-card__bar";
+					bar.innerHTML =
+						'<span class="code-card__dots"><span></span><span></span><span></span></span>' +
+						(lang ? '<span class="code-card__lang">' + lang + "</span>" : "") +
+						(filename ? '<span class="code-card__file">' + filename + "</span>" : "") +
+						'<span class="code-card__spacer"></span>';
+
+					const numBtn = document.createElement("button");
+					numBtn.type = "button";
+					numBtn.className = "code-card__btn";
+					numBtn.title = "Toggle line numbers";
+					numBtn.innerHTML = ICON_HASH + "<span>Lines</span>";
+					numBtn.addEventListener("click", () => {
+						const on = card.dataset.numbered === "true";
+						card.dataset.numbered = on ? "false" : "true";
+					});
+
+					const copyBtn = document.createElement("button");
+					copyBtn.type = "button";
+					copyBtn.className = "code-card__btn";
+					copyBtn.title = "Copy to clipboard";
+					copyBtn.innerHTML = ICON_COPY + "<span>Copy</span>";
+					copyBtn.addEventListener("click", async () => {
+						try {
+							await navigator.clipboard.writeText(raw);
+							copyBtn.dataset.state = "ok";
+							copyBtn.innerHTML = ICON_OK + "<span>Copied</span>";
+							setTimeout(() => {
+								copyBtn.dataset.state = "";
+								copyBtn.innerHTML = ICON_COPY + "<span>Copy</span>";
+							}, 1600);
+						} catch (e) {}
+					});
+
+					bar.appendChild(numBtn);
+					bar.appendChild(copyBtn);
+
+					pre.parentNode.insertBefore(card, pre);
+					card.appendChild(bar);
+					card.appendChild(pre);
+
+					wrapLines(pre);
+
+					if (card.dataset.collapsible === "true") {
+						const expand = document.createElement("button");
+						expand.type = "button";
+						expand.className = "code-card__expand";
+						expand.textContent = "Expand " + lineCount + " lines";
+						expand.addEventListener("click", () => {
+							const collapsed = card.dataset.collapsed === "true";
+							card.dataset.collapsed = collapsed ? "false" : "true";
+							expand.textContent = collapsed
+								? "Collapse"
+								: "Expand " + lineCount + " lines";
+						});
+						card.appendChild(expand);
+					}
+				});
+			})();
+		</script>
 	</body>
 </html>

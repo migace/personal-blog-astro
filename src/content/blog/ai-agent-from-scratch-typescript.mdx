@@ -38,13 +38,98 @@ npx tsx index.ts "Generate an image of a sunset over the ocean"
 
 Behind the scenes, the agent needs to:
 
-1. Persist the user's message to a conversation history
-2. Send the full history to an LLM with a set of available tools
-3. Recognize that this request requires the DALL-E image generation tool
-4. Execute the tool call with a well-crafted prompt
-5. Feed the tool's result (an image URL) back to the LLM
-6. Let the LLM compose a final natural language response
-7. Print it to the terminal
+<ol class="agent-flow">
+  <li>
+    <span class="agent-flow__title">Persist the user's message</span>
+    <span class="agent-flow__desc">to a running conversation history.</span>
+  </li>
+  <li>
+    <span class="agent-flow__title">Send the full history to the LLM</span>
+    <span class="agent-flow__desc">together with the set of available tools.</span>
+  </li>
+  <li>
+    <span class="agent-flow__title">Recognize the right tool</span>
+    <span class="agent-flow__desc">in this case, the DALL-E image generation tool.</span>
+  </li>
+  <li>
+    <span class="agent-flow__title">Execute the tool call</span>
+    <span class="agent-flow__desc">with a well-crafted prompt derived from the message.</span>
+  </li>
+  <li>
+    <span class="agent-flow__title">Feed the result back</span>
+    <span class="agent-flow__desc">return the image URL to the LLM as tool output.</span>
+  </li>
+  <li>
+    <span class="agent-flow__title">Compose a final response</span>
+    <span class="agent-flow__desc">let the LLM phrase it as natural language.</span>
+  </li>
+  <li>
+    <span class="agent-flow__title">Print it to the terminal</span>
+    <span class="agent-flow__desc">close the loop with the user.</span>
+  </li>
+</ol>
+
+<style>{`
+  .agent-flow {
+    list-style: none;
+    counter-reset: agentstep;
+    padding: 0;
+    margin: 1.75em 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+  }
+  .agent-flow li {
+    counter-increment: agentstep;
+    position: relative;
+    padding: 0.85rem 0.95rem 0.85rem 2.6rem;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0) 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .agent-flow li:hover {
+    border-color: rgba(37, 99, 235, 0.45);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.1);
+  }
+  .agent-flow li::before {
+    content: counter(agentstep);
+    position: absolute;
+    left: 0.7rem;
+    top: 0.85rem;
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  }
+  .agent-flow__title {
+    font-weight: 600;
+    color: rgb(var(--gray-dark));
+    font-size: 0.96rem;
+    line-height: 1.25;
+  }
+  .agent-flow__desc {
+    color: rgb(var(--gray));
+    font-size: 0.86rem;
+    line-height: 1.4;
+  }
+  @media (max-width: 640px) {
+    .agent-flow {
+      grid-template-columns: 1fr;
+    }
+  }
+`}</style>
 
 This is non-trivial because the agent doesn't just call a function — it *decides* to call a function. The LLM acts as a reasoning engine that chooses which tool to invoke (if any), interprets the result, and may even loop multiple times before settling on a final answer. That's the fundamental difference between a chatbot and an agent.
 
