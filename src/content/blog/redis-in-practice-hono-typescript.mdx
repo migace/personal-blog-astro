@@ -1,0 +1,779 @@
+---
+title: "Redis in Practice: A Case Study with Hono and TypeScript"
+description: "A practical case study of using Redis in a small Hono + TypeScript API — caching, counters, rate limiting, and short-lived state. Patterns that solve real backend problems, not abstract SET foo bar tutorials."
+pubDate: "May 9 2026"
+heroImage: "/redis-case-study.png"
+tags: ["Redis", "TypeScript", "Hono", "Backend"]
+---
+
+import CacheAsidePlayground from "../../components/CacheAsidePlayground";
+
+Redis is one of those tools that many developers recognize, but not everyone knows where to use it in real projects.
+
+Most often, we hear:
+
+> "Redis is for caching."
+
+That is true, but it is only part of the picture.
+
+In real-world projects, Redis is also useful for rate limiting, counters, short-lived statuses, queues, sessions, locks, and idempotency keys.
+
+In this article, I will show a practical case study: a small API built with **Hono + TypeScript**, where Redis solves several real backend problems.
+
+This will not be an abstract tutorial with `SET foo bar`. We will build an example closer to something you could find in a real product application.
+
+---
+
+## Why Hono?
+
+Hono is a lightweight web framework for TypeScript/JavaScript that works very well for building simple and fast APIs.
+
+It can run in different environments: Node.js, Bun, Deno, Cloudflare Workers, or AWS Lambda.
+
+In this example, I use Hono on Node.js because I want to show a classic backend case: HTTP endpoints, Redis as supporting infrastructure, and TypeScript as a type-safety layer.
+
+A minimal setup looks like this:
+
+```ts
+import { Hono } from "hono";
+import { serve } from "@hono/node-server";
+
+const app = new Hono();
+
+app.get("/health", (c) => {
+  return c.json({
+    status: "ok",
+  });
+});
+
+serve({
+  fetch: app.fetch,
+  port: 3000,
+});
+```
+
+But the API itself is just the beginning. The real value appears when we start solving concrete application problems under those endpoints.
+
+---
+
+## Business Problem
+
+Imagine a backend for a marketplace, product catalog, or product configurator.
+
+We have an endpoint:
+
+```
+GET /products/:id
+```
+
+This endpoint fetches product data from a database or an external API.
+
+The problem: product data is read frequently, but it does not change every second. If every request hits the database directly, we generate unnecessary load.
+
+So we want to:
+
+- cache product data,
+- count product views,
+- protect the endpoint from excessive requests,
+- allow manual cache invalidation,
+- store a short-lived status for an import operation.
+
+These are very common places where Redis fits perfectly.
+
+---
+
+## What Are We Going to Build?
+
+Our API will have several endpoints:
+
+```
+GET    /health
+GET    /products/:id
+DELETE /products/:id/cache
+GET    /products/:id/views
+POST   /imports
+GET    /imports/:jobId
+```
+
+Redis will store data under keys like:
+
+```
+product:{id}
+product:{id}:views
+rate_limit:{route}:{identifier}
+import:{jobId}
+```
+
+This will let us demonstrate four practical Redis use cases:
+
+1. cache,
+2. counter,
+3. rate limiter,
+4. short-lived state.
+
+---
+
+## Redis as a Cache
+
+The most important pattern to start with is **cache-aside**.
+
+It works like this:
+
+1. The API receives a request.
+2. It checks Redis.
+3. If the data exists in Redis, it returns a cache hit.
+4. If the data does not exist, it fetches it from the database.
+5. It saves the result in Redis with a TTL.
+6. It returns the data to the user.
+
+Example cache service:
+
+```ts
+export async function getProductFromCache(
+  productId: string,
+): Promise<Product | null> {
+  const key = redisKeys.productCache(productId);
+  const cachedValue = await redisClient.get(key);
+
+  if (!cachedValue) {
+    return null;
+  }
+
+  return JSON.parse(cachedValue) as Product;
+}
+
+export async function saveProductToCache(product: Product): Promise<void> {
+  const key = redisKeys.productCache(product.id);
+
+  await redisClient.set(key, JSON.stringify(product), {
+    EX: env.PRODUCT_CACHE_TTL_SECONDS,
+  });
+}
+```
+
+The most important part is:
+
+```ts
+{
+  EX: env.PRODUCT_CACHE_TTL_SECONDS;
+}
+```
+
+This means the key will automatically expire after a given number of seconds.
+
+A cache without a TTL is one of the most common mistakes. Data may change, but the user can still receive an old version.
+
+---
+
+## The Hono Route Handler That Connects Everything
+
+To make sure Hono is not just a technology mentioned in the title, let's show a complete route handler.
+
+Assume we already have these functions:
+
+- `getProductFromCache(productId)`
+- `saveProductToCache(product)`
+- `findProductById(productId)`
+- `incrementProductViews(productId)`
+
+In Hono, we can connect everything like this:
+
+```ts
+import { Hono } from "hono";
+import { getProductFromCache, saveProductToCache } from "./product-cache.service";
+import { findProductById } from "./product.repository";
+import { incrementProductViews } from "./product-views.service";
+
+export const productRoutes = new Hono();
+
+productRoutes.get("/:id", async (c) => {
+  const productId = c.req.param("id");
+
+  const cachedProduct = await getProductFromCache(productId);
+
+  if (cachedProduct) {
+    const views = await incrementProductViews(productId);
+
+    return c.json({
+      data: cachedProduct,
+      meta: {
+        cache: "hit",
+        views,
+      },
+    });
+  }
+
+  const product = await findProductById(productId);
+
+  if (!product) {
+    return c.json(
+      {
+        error: "Product not found",
+      },
+      404,
+    );
+  }
+
+  await saveProductToCache(product);
+
+  const views = await incrementProductViews(productId);
+
+  return c.json({
+    data: product,
+    meta: {
+      cache: "miss",
+      views,
+    },
+  });
+});
+```
+
+This endpoint does several things:
+
+1. Reads `productId` from the URL.
+2. Checks Redis.
+3. If the product is in cache, returns it immediately.
+4. If it is not in cache, fetches the product from the repository.
+5. Saves the product in Redis with a TTL.
+6. Increments the view counter.
+7. Returns the response with information about cache hit or cache miss.
+
+This is a simple but very practical example of using Redis in an API.
+
+### Try it: cache-aside playground
+
+Below is a small simulation of the same flow. It runs entirely in your browser — no backend, no real Redis. The "DB" is intentionally slow (~400&nbsp;ms), Redis is instant. Hit the endpoint a few times and watch the TTL count down.
+
+<CacheAsidePlayground client:visible />
+
+---
+
+## Manual Cache Invalidation
+
+In the "What Are We Going to Build?" section, we promised this endpoint:
+
+```
+DELETE /products/:id/cache
+```
+
+Why do we need it?
+
+Imagine that a product has been updated in the database. If we still keep the old version in Redis, the frontend may receive outdated data for some time.
+
+That is why after updating a product, we can delete its cache.
+
+Service:
+
+```ts
+export async function deleteProductCache(productId: string): Promise<void> {
+  const key = redisKeys.productCache(productId);
+
+  await redisClient.del(key);
+}
+```
+
+Hono route handler:
+
+```ts
+productRoutes.delete("/:id/cache", async (c) => {
+  const productId = c.req.param("id");
+
+  await deleteProductCache(productId);
+
+  return c.json({
+    message: "Product cache deleted",
+    productId,
+  });
+});
+```
+
+In a real system, this endpoint does not necessarily have to be public. More often, invalidation is triggered automatically after an update operation:
+
+```
+PUT /products/:id
+  -> update product in database
+  -> delete product:{id} from Redis
+  -> return updated product
+```
+
+The key point is that cache needs an invalidation strategy.
+
+TTL helps, but it is not always enough.
+
+---
+
+## Redis as a Counter
+
+The second practical use case is a product view counter.
+
+```ts
+export async function incrementProductViews(productId: string): Promise<number> {
+  const key = redisKeys.productViews(productId);
+
+  return redisClient.incr(key);
+}
+
+export async function getProductViews(productId: string): Promise<number> {
+  const key = redisKeys.productViews(productId);
+  const views = await redisClient.get(key);
+
+  return views ? Number(views) : 0;
+}
+```
+
+Redis has the `INCR` operation, which atomically increments a numeric value stored under a key.
+
+This means that if many requests increase the counter at the same time, Redis will handle it correctly.
+
+You can also build a counter in a traditional database, but for very frequent writes, Redis is often simpler and faster.
+
+A Hono endpoint can look like this:
+
+```ts
+productRoutes.get("/:id/views", async (c) => {
+  const productId = c.req.param("id");
+  const views = await getProductViews(productId);
+
+  return c.json({
+    productId,
+    views,
+  });
+});
+```
+
+---
+
+## Redis as a Rate Limiter
+
+Another use case: protecting an API from too many requests.
+
+A simple fixed-window rate limiter can work like this:
+
+```ts
+import type { Context, Next } from "hono";
+
+export function rateLimit(route: string) {
+  return async (c: Context, next: Next) => {
+    const ip = c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+
+    const key = redisKeys.rateLimit(ip, route);
+
+    const current = await redisClient.incr(key);
+
+    if (current === 1) {
+      await redisClient.expire(key, env.RATE_LIMIT_WINDOW_SECONDS);
+    }
+
+    if (current > env.RATE_LIMIT_MAX_REQUESTS) {
+      return c.json(
+        {
+          error: "Too many requests",
+          limit: env.RATE_LIMIT_MAX_REQUESTS,
+          windowSeconds: env.RATE_LIMIT_WINDOW_SECONDS,
+        },
+        429,
+      );
+    }
+
+    c.header("X-RateLimit-Limit", String(env.RATE_LIMIT_MAX_REQUESTS));
+    c.header(
+      "X-RateLimit-Remaining",
+      String(Math.max(0, env.RATE_LIMIT_MAX_REQUESTS - current)),
+    );
+
+    await next();
+  };
+}
+```
+
+The key line is this one:
+
+```ts
+const key = redisKeys.rateLimit(ip, route);
+```
+
+Without it, the code would be incomplete, because Redis needs to know for which user/IP and route we are counting requests.
+
+The mechanism is simple:
+
+1. For a given IP and endpoint, we create a key in Redis.
+2. Each request increments the counter.
+3. The first request sets a TTL, for example 60 seconds.
+4. If the counter exceeds the limit, we return `429`.
+
+Usage in Hono:
+
+```ts
+productRoutes.get("/:id", rateLimit("get_product"), async (c) => {
+  // product handler
+});
+```
+
+This is not the most advanced rate limiter in the world, but for many APIs it is a good starting point.
+
+In more demanding systems, you can consider:
+
+- sliding window,
+- token bucket,
+- limits per user ID,
+- limits per tenant,
+- separate limits for public and private endpoints.
+
+---
+
+## Redis as Short-Lived Status Storage
+
+A useful example is **import status**.
+
+Assume a user starts importing product data from Excel or PDF.
+
+The API returns:
+
+```json
+{
+  "jobId": "uuid",
+  "status": "queued"
+}
+```
+
+The frontend can then ask:
+
+```
+GET /imports/:jobId
+```
+
+The import status can be stored in Redis:
+
+```ts
+await redisClient.set(key, JSON.stringify(status), {
+  EX: env.IMPORT_STATUS_TTL_SECONDS,
+});
+```
+
+Why does Redis fit well here?
+
+Because such a status is often needed only for a short time.
+
+We do not always want to create a database table for every short-lived state, especially if the full import history is stored elsewhere or is not needed.
+
+Example Hono endpoint:
+
+```ts
+importRoutes.get("/:jobId", async (c) => {
+  const jobId = c.req.param("jobId");
+  const status = await getImportStatus(jobId);
+
+  if (!status) {
+    return c.json(
+      {
+        error: "Import job not found",
+      },
+      404,
+    );
+  }
+
+  return c.json({
+    data: status,
+  });
+});
+```
+
+---
+
+## Key Naming Matters
+
+One of the most important practices when working with Redis is consistent **key naming**.
+
+Instead of writing random strings:
+
+```
+product1
+product_1
+cacheProduct:1
+```
+
+it is better to use a consistent format:
+
+```
+product:1
+product:1:views
+import:job-id
+rate_limit:get_product:127.0.0.1
+```
+
+In code, it is worth keeping this in one place:
+
+```ts
+export const redisKeys = {
+  productCache: (productId: string) => `product:${productId}`,
+  productViews: (productId: string) => `product:${productId}:views`,
+  importStatus: (jobId: string) => `import:${jobId}`,
+  rateLimit: (identifier: string, route: string) =>
+    `rate_limit:${route}:${identifier}`,
+};
+```
+
+This is a small decision, but it helps a lot with maintaining the system.
+
+---
+
+## Redis Should Not Leak Across the Whole Application
+
+It is also worth taking care of architecture.
+
+A bad direction:
+
+```
+route handler -> direct redisClient.get/set/incr
+```
+
+A better direction:
+
+```
+route handler -> service -> cache service -> redis client
+```
+
+Thanks to this:
+
+- endpoints are simpler,
+- cache logic is separated,
+- tests are easier to write,
+- changing the cache strategy is easier,
+- debugging is easier.
+
+Redis is an infrastructure detail. It should not dominate business logic.
+
+---
+
+## When Should You Use Redis?
+
+Redis is worth considering when you have one of these situations on your hands — and even more so when you can map it to a concrete example from your own product.
+
+<div class="redis-when">
+  <div class="redis-when__col">
+    <div class="redis-when__label">Good fit when you have</div>
+    <ul class="redis-when__list">
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Frequently read data</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Expensive database queries</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Data that can be temporarily stale</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Short-lived statuses</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Counters</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Rate limiting</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Queues</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Sessions</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Locks</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Idempotency keys</li>
+    </ul>
+  </div>
+  <div class="redis-when__col">
+    <div class="redis-when__label">Real-world examples</div>
+    <ul class="redis-when__list">
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Product catalog cache</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>User session</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Password reset token</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Rate limit per user</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Import status</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Configuration result cache</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>API response cache</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Background job progress</li>
+      <li><span class="redis-when__dot" aria-hidden="true"></span>Distributed lock</li>
+    </ul>
+  </div>
+</div>
+
+<style>{`
+  .redis-when {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5em 0 1.75em;
+  }
+  .redis-when__col {
+    background: linear-gradient(180deg, #ffffff 0%, rgba(248, 250, 252, 0.9) 100%);
+    border: 1px solid rgb(var(--gray-light));
+    border-radius: 14px;
+    padding: 1.25rem 1.25rem 1.1rem;
+    box-shadow: 0 1px 2px rgba(15, 18, 25, 0.04), 0 8px 24px rgba(15, 18, 25, 0.04);
+  }
+  .redis-when__label {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: rgb(var(--gray));
+    margin-bottom: 0.85rem;
+  }
+  .redis-when__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .redis-when__list li {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.35rem 0;
+    color: rgb(var(--gray-dark));
+    font-size: 0.98rem;
+    line-height: 1.4;
+  }
+  .redis-when__dot {
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  }
+  @media (max-width: 640px) {
+    .redis-when {
+      grid-template-columns: 1fr;
+    }
+  }
+`}</style>
+
+---
+
+## When Should You Not Use Redis?
+
+Redis is not a magic solution for everything.
+
+It is not worth using only because "it is fast".
+
+Ask yourself:
+
+- Is the data really read frequently?
+- Is the database query actually expensive?
+- Can I accept temporarily stale data?
+- Do I have a cache invalidation strategy?
+- Is Redis supposed to be a cache or the source of truth?
+- What happens if Redis is unavailable?
+
+For many systems, the biggest problem is not the lack of Redis, but a bad caching strategy.
+
+---
+
+## Common Mistakes
+
+The first mistake: **no TTL**.
+
+```ts
+await redisClient.set(key, value);
+```
+
+For cache, this is usually better:
+
+```ts
+await redisClient.set(key, value, { EX: 60 });
+```
+
+The second mistake: **caching everything**.
+
+Not every endpoint needs caching. Cache adds complexity: invalidation, TTL, monitoring, and debugging.
+
+The third mistake: **no invalidation strategy**.
+
+If a product is updated in the database, you need to know what should happen with the cache.
+
+The fourth mistake: **treating Redis as the main database without understanding persistence**.
+
+Redis can work as a database, but then you need to understand AOF, snapshots, replication, memory limits, eviction policy, and backups.
+
+---
+
+## How to Move This Into a Real Project
+
+In a real project, you would probably have a database such as PostgreSQL, Supabase, Drizzle, or Prisma.
+
+The flow would look like this:
+
+```
+GET /products/:id
+  -> check Redis
+  -> if hit: return cached product
+  -> if miss: fetch from PostgreSQL
+  -> save to Redis with TTL
+  -> return product
+```
+
+After updating a product:
+
+```
+PUT /products/:id
+  -> update PostgreSQL
+  -> delete product:{id}
+  -> return updated product
+```
+
+For more complex systems, such as CPQ/PIM, it may be useful to cache not only a single product, but also ready-made snapshots:
+
+```
+family:{familyId}:version:{versionId}:snapshot
+family:{familyId}:version:{versionId}:rules
+family:{familyId}:version:{versionId}:technical-tables
+```
+
+Adding `versionId` is important so that we do not mix data from different catalog versions.
+
+---
+
+## The Most Important Takeaway
+
+Redis is a very practical tool, but it should be used consciously.
+
+The best starting point is not learning every command, but understanding a few patterns:
+
+- cache-aside
+- rate limiting
+- counter
+- short-lived state
+- idempotency key
+- distributed lock
+
+In our case study, Redis helped us:
+
+- speed up the product endpoint,
+- limit the number of requests,
+- count product views,
+- store import status,
+- show simple cache invalidation.
+
+And this is a good way to learn Redis: not as a separate technology, but as a tool for solving concrete backend problems.
+
+---
+
+## Summary
+
+Redis combined with Hono and TypeScript gives us a lightweight, fast, and practical foundation for a modern API.
+
+Hono provides a simple endpoint structure, TypeScript gives us type safety, and Redis helps solve problems that appear very quickly in real applications:
+
+- cache
+- rate limiting
+- counters
+- short-lived state
+- job status
+- idempotency
+- locks
+
+But the most important thing is not Redis itself.
+
+The most important question is:
+
+> What problem am I trying to solve, and is Redis the right tool for it?
+
+If the answer is: fast access, short-lived state, counter, limit, or cache — Redis will often be a good choice.
+
+---
+
+## What About You?
+
+What do you most often use Redis for in your projects?
+
+Cache? Sessions? Rate limiting? Queues?
+
+Or maybe you once forgot about TTL and spent half a day debugging stale data?
+
+I would be happy to hear about your experience.
+
+If you are interested in topics around TypeScript, backend/frontend architecture, AI-assisted development, and practical product engineering, follow me on LinkedIn, X/Twitter, or GitHub — I will be publishing more case studies like this.
