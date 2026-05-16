@@ -22,6 +22,8 @@ In this article, I will show a practical case study: a small API built with **Ho
 
 This will not be an abstract tutorial with `SET foo bar`. We will build an example closer to something you could find in a real product application.
 
+The full, runnable source code for this case study lives here: [github.com/migace/hono-redis-case-study](https://github.com/migace/hono-redis-case-study). Clone it, run it locally against a real Redis instance, and use the snippets in this article as a guided tour through the codebase.
+
 ---
 
 ## Why Hono?
@@ -83,6 +85,8 @@ These are very common places where Redis fits perfectly.
 ---
 
 ## What Are We Going to Build?
+
+Everything below — the routes, the cache service, the rate limiter, the import-status flow — is implemented end-to-end in the companion repository: [github.com/migace/hono-redis-case-study](https://github.com/migace/hono-redis-case-study).
 
 Our API will have several endpoints:
 
@@ -777,3 +781,5 @@ Or maybe you once forgot about TTL and spent half a day debugging stale data?
 I would be happy to hear about your experience.
 
 If you are interested in topics around TypeScript, backend/frontend architecture, AI-assisted development, and practical product engineering, follow me on LinkedIn, X/Twitter, or GitHub — I will be publishing more case studies like this.
+
+Github repository: [https://github.com/migace/hono-redis-case-study](https://github.com/migace/hono-redis-case-study)
