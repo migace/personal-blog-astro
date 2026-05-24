@@ -6,7 +6,7 @@ heroImage: "/redis-case-study.png"
 tags: ["Redis", "TypeScript", "Hono", "Backend"]
 ---
 
-import CacheAsidePlayground from "../../components/CacheAsidePlayground";
+import CacheAsidePlaygroundIsland from "../../components/CacheAsidePlayground/CacheAsidePlaygroundIsland.astro";
 
 Redis is one of those tools that many developers recognize, but not everyone knows where to use it in real projects.
 
@@ -23,6 +23,8 @@ In this article, I will show a practical case study: a small API built with **Ho
 This will not be an abstract tutorial with `SET foo bar`. We will build an example closer to something you could find in a real product application.
 
 The full, runnable source code for this case study lives here: [github.com/migace/hono-redis-case-study](https://github.com/migace/hono-redis-case-study). Clone it, run it locally against a real Redis instance, and use the snippets in this article as a guided tour through the codebase.
+
+If you want to start with the hands-on part, jump straight to the [interactive cache-aside playground](#interactive-cache-aside-playground).
 
 ---
 
@@ -244,11 +246,13 @@ This endpoint does several things:
 
 This is a simple but very practical example of using Redis in an API.
 
-### Try it: cache-aside playground
+---
+
+## Interactive Cache-Aside Playground
 
 Below is a small simulation of the same flow. It runs entirely in your browser — no backend, no real Redis. The "DB" is intentionally slow (~400&nbsp;ms), Redis is instant. Hit the endpoint a few times and watch the TTL count down.
 
-<CacheAsidePlayground client:visible />
+<CacheAsidePlaygroundIsland />
 
 ---
 

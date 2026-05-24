@@ -1,0 +1,72 @@
+.prose {
+  color: var(--color-graphite);
+}
+
+.prose p {
+  margin-bottom: 1.25em;
+}
+
+.prose h2 {
+  margin-top: 2em;
+  margin-bottom: 0.7em;
+}
+
+.prose h3 {
+  margin-top: 1.8em;
+  margin-bottom: 0.55em;
+}
+
+.prose h4 {
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose ul,
+.prose ol {
+  margin-top: 0.5em;
+  margin-bottom: 1.25em;
+  padding-left: 1.5em;
+}
+
+.prose li {
+  margin-bottom: 0.4em;
+}
+
+.prose li > ul,
+.prose li > ol {
+  margin-top: 0.375em;
+  margin-bottom: 0;
+}
+
+.prose hr {
+  margin: 2.25em 0 1.45em;
+}
+
+.prose pre,
+.prose blockquote {
+  margin: 1.6em 0;
+}
+
+.prose hr + h2 {
+  margin-top: 0;
+}
+
+.prose .interactive-lab-slot {
+  margin: 1.75em 0 2.25em;
+}
+
+.prose .interactive-lab-slot > :first-child {
+  margin-top: 0;
+}
+
+.prose .interactive-lab-slot > :last-child {
+  margin-bottom: 0;
+}
+
+.prose > :first-child {
+  margin-top: 0;
+}
+
+.prose > :last-child {
+  margin-bottom: 0;
+}

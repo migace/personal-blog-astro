@@ -1,9 +1,26 @@
 ---
+import { getCollection } from "astro:content";
+import type { CollectionEntry } from "astro:content";
 import BaseHead from "../components/BaseHead.astro";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
+import FormattedDate from "../components/FormattedDate.astro";
 import { SITE_TITLE, SITE_DESCRIPTION } from "../consts";
-import { Content } from "./index.mdx";
+
+const posts = await getCollection("blog");
+const proofSlugs = [
+  "llm-workflow-e2e-tests",
+  "redis-in-practice-hono-typescript",
+  "cpq-and-eav-model",
+];
+
+const isBlogPost = (
+  post: CollectionEntry<"blog"> | undefined
+): post is CollectionEntry<"blog"> => Boolean(post);
+
+const proofPosts = proofSlugs
+  .map((slug) => posts.find((post) => post.id === slug))
+  .filter(isBlogPost);
 ---
 
 <!doctype html>
@@ -13,221 +30,436 @@ import { Content } from "./index.mdx";
   </head>
   <body>
     <Header />
-    <main>
-      <Content />
+    <main class="home">
+      <section class="home-hero" aria-labelledby="home-title">
+        <div class="home-hero__copy">
+          <p class="eyebrow">Michał Gacek / Tiptopdesign</p>
+          <h1 id="home-title">
+            Full-stack AI consulting for business problems that need real execution.
+          </h1>
+          <p class="home-hero__lead">
+            I help founders, product leaders, and technical teams turn complex
+            workflows, product ideas, and AI opportunities into maintainable
+            software that can reach production.
+          </p>
+          <div class="home-hero__actions">
+            <a class="button button--primary" href="mailto:michal.gacek@tiptopdesign.pl">
+              Discuss a project problem
+            </a>
+            <a class="button button--secondary" href="/blog/">
+              Read the proof library
+            </a>
+          </div>
+        </div>
+
+        <aside class="home-hero__panel card card--interactive" aria-label="Delivery model">
+          <p class="panel-label">Working model</p>
+          <ol class="delivery-steps">
+            <li><span>01</span> Understand the business constraint</li>
+            <li><span>02</span> Design the technical path</li>
+            <li><span>03</span> Build the full-stack system</li>
+            <li><span>04</span> Evaluate AI and quality risks</li>
+            <li><span>05</span> Ship, measure, and iterate</li>
+          </ol>
+        </aside>
+      </section>
+
+      <section class="home-section" aria-labelledby="fit-title">
+        <div class="section-header">
+          <p class="eyebrow">Problem fit</p>
+          <h2 class="section-title" id="fit-title">
+            Useful when the problem is not just "write more code".
+          </h2>
+          <p class="section-lead">
+            The best fit is a situation where business context, architecture,
+            implementation, and AI judgment all have to meet.
+          </p>
+        </div>
+
+        <div class="fit-grid">
+          <article class="card card--pad card--proof">
+            <span class="fit-mark">Workflow</span>
+            <h3>Internal process stuck in manual work</h3>
+            <p>
+              Map the real workflow, remove fragile handoffs, and build a tool
+              that fits how the business actually operates.
+            </p>
+          </article>
+          <article class="card card--pad card--proof">
+            <span class="fit-mark">AI</span>
+            <h3>AI idea needs feasibility and delivery</h3>
+            <p>
+              Turn an AI concept into a scoped workflow with evaluation,
+              tool-calling boundaries, and production constraints.
+            </p>
+          </article>
+          <article class="card card--pad card--proof">
+            <span class="fit-mark">Product</span>
+            <h3>Prototype needs production architecture</h3>
+            <p>
+              Move from a promising demo to a system with maintainable
+              boundaries, tests, deployment, and operating discipline.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="home-section process-section" aria-labelledby="process-title">
+        <div class="section-header">
+          <p class="eyebrow">How I work</p>
+          <h2 class="section-title" id="process-title">
+            Senior execution across the whole path.
+          </h2>
+        </div>
+
+        <div class="process-line">
+          <div>
+            <strong>Concept</strong>
+            <span>clarify the problem and constraints</span>
+          </div>
+          <div>
+            <strong>Architecture</strong>
+            <span>choose boundaries, data flows, and trade-offs</span>
+          </div>
+          <div>
+            <strong>Implementation</strong>
+            <span>build full-stack features and integration points</span>
+          </div>
+          <div>
+            <strong>Evaluation</strong>
+            <span>test quality, AI behavior, and operational risk</span>
+          </div>
+          <div>
+            <strong>Production</strong>
+            <span>ship, observe, and iterate with the team</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="services" class="home-section" aria-labelledby="services-title">
+        <div class="section-header">
+          <p class="eyebrow">Ways to work together</p>
+          <h2 class="section-title" id="services-title">
+            Flexible entry points, not commodity packages.
+          </h2>
+          <p class="section-lead">
+            Engagements can start as advisory, implementation, rescue work, AI
+            workflow design, or product development. The shape follows the
+            problem.
+          </p>
+        </div>
+
+        <div class="service-grid">
+          <article class="service-item">
+            <h3>AI workflow audit</h3>
+            <p>Assess whether AI belongs in the process, where it creates value, and how to evaluate it.</p>
+          </article>
+          <article class="service-item">
+            <h3>Technical architecture review</h3>
+            <p>Review product architecture, delivery risks, boundaries, and realistic next steps.</p>
+          </article>
+          <article class="service-item">
+            <h3>Prototype to production</h3>
+            <p>Turn a validated idea into a maintainable full-stack system ready for real users.</p>
+          </article>
+          <article class="service-item">
+            <h3>Full-stack product rescue</h3>
+            <p>Stabilize a stuck project, reduce uncertainty, and create a practical delivery path.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="home-section proof-section" aria-labelledby="proof-title">
+        <div class="section-header">
+          <p class="eyebrow">Proof through work</p>
+          <h2 class="section-title" id="proof-title">
+            Technical writing as evidence of judgment.
+          </h2>
+          <p class="section-lead">
+            The blog is a proof library: architecture decisions, AI workflows,
+            testing strategy, backend systems, and interactive explanations.
+          </p>
+        </div>
+
+        <div class="proof-grid">
+          {
+            proofPosts.map((post) => (
+              <a class="proof-card card card--proof" href={`/blog/${post.id}/`}>
+                {post.data.heroImage && (
+                  <img src={post.data.heroImage} alt="" width="720" height="405" />
+                )}
+                <div class="proof-card__body">
+                  <p class="proof-card__date">
+                    <FormattedDate date={post.data.pubDate} />
+                  </p>
+                  <h3>{post.data.title}</h3>
+                  <p>{post.data.description}</p>
+                </div>
+              </a>
+            ))
+          }
+        </div>
+      </section>
+
+      <section class="home-section lab-strip card card--interactive" aria-labelledby="lab-title">
+        <div>
+          <p class="eyebrow">Interactive lab</p>
+          <h2 class="section-title" id="lab-title">
+            Concepts should be touchable when timing, state, or trade-offs matter.
+          </h2>
+          <p class="section-lead">
+            The Redis case study includes a cache-aside playground so readers can
+            feel the difference between a cache miss, a cache hit, and TTL
+            invalidation.
+          </p>
+        </div>
+        <a class="button button--secondary" href="/blog/redis-in-practice-hono-typescript/#interactive-cache-aside-playground">
+          Explore the Redis playground
+        </a>
+      </section>
     </main>
     <Footer />
   </body>
 </html>
 
-<style is:global>
-  .hero {
-    padding: 2.5rem 0 0;
-    text-align: center;
-  }
-
-  .hero-label {
-    font-size: 0.8rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin-bottom: 1rem;
-  }
-
-  .hero-title {
-    font-size: clamp(2.2rem, 5vw, 3.4rem);
-    font-weight: 700;
-    line-height: 1.1;
-    color: rgb(var(--black));
-    margin: 0 0 1.25rem;
-  }
-
-  .hero-lead {
-    font-size: 1.2rem;
-    line-height: 1.65;
-    color: rgb(var(--gray-dark));
-    max-width: 960px;
-    margin: 0 auto 1rem;
-  }
-
-  .hero-sub {
-    font-size: 1rem;
-    line-height: 1.7;
-    color: rgb(var(--gray));
-    max-width: 960px;
-    margin: 0 auto;
-  }
-
-  .divider {
-    border-top: 1px solid rgb(var(--gray-light));
-    margin: 2.5rem 0;
-  }
-
-  .section {
-    margin: 0;
-  }
-
-  .section-title {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: rgb(var(--black));
-    margin: 0 0 0.75rem;
-  }
-
-  .feature-list {
-    list-style: none;
-    padding: 0;
-    margin: 1rem 0 0;
+<style>
+  .home {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: var(--space-24);
   }
 
-  .feature-list li {
-    padding-left: 1.4rem;
-    position: relative;
-    color: rgb(var(--gray-dark));
-    font-size: 1rem;
-    line-height: 1.6;
-  }
-
-  .feature-list li::before {
-    content: "→";
-    position: absolute;
-    left: 0;
-    color: var(--accent);
-    font-weight: 700;
-  }
-
-  .cards-grid {
+  .home-hero {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1.25rem;
-    margin: 0;
-  }
-
-  .card {
-    background: white;
-    border: 1px solid rgb(var(--gray-light));
-    border-radius: 10px;
-    padding: 1.5rem;
-    box-shadow: 0 1px 4px rgba(var(--gray), 10%);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
-  }
-
-  .card:hover {
-    box-shadow: var(--box-shadow);
-    transform: translateY(-2px);
-  }
-
-  .card-icon {
-    width: 44px;
-    height: 44px;
-    display: flex;
+    grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+    gap: var(--space-12);
     align-items: center;
-    justify-content: center;
-    background: rgba(30, 41, 59, 0.06);
-    border-radius: 8px;
-    margin-bottom: 1rem;
-    color: var(--accent);
+    min-height: calc(100vh - 12rem);
+    padding: var(--space-8) 0 var(--space-4);
   }
 
-  .card-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: rgb(var(--black));
-    margin: 0 0 0.5rem;
-  }
-
-  .card-text {
-    font-size: 0.9rem;
-    color: rgb(var(--gray));
-    line-height: 1.6;
+  .home-hero h1 {
+    max-width: 820px;
     margin: 0;
   }
 
-  .audience-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1.25rem;
-    margin-top: 1rem;
+  .home-hero__lead {
+    max-width: 760px;
+    margin: var(--space-6) 0 0;
+    color: var(--color-graphite);
+    font-size: clamp(1.08rem, 1.8vw, 1.25rem);
+    line-height: var(--leading-relaxed);
   }
 
-  .audience-item {
-    padding: 1.25rem;
-    background: rgba(var(--gray-light), 0.4);
-    border-radius: 8px;
+  .home-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-8);
   }
 
-  .audience-tag {
-    display: inline-block;
-    font-size: 0.75rem;
+  .home-hero__panel {
+    padding: var(--space-6);
+    background:
+      linear-gradient(180deg, rgba(var(--rgb-paper), 0.95), rgba(var(--rgb-canvas), 0.86)),
+      linear-gradient(90deg, rgba(var(--rgb-teal), 0.08), rgba(var(--rgb-blue), 0.05));
+  }
+
+  .panel-label,
+  .fit-mark {
+    display: inline-flex;
+    margin: 0 0 var(--space-4);
+    color: var(--color-blue-deep);
+    font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--accent);
-    background: rgba(30, 41, 59, 0.08);
-    padding: 0.2rem 0.6rem;
-    border-radius: 4px;
-    margin-bottom: 0.6rem;
   }
 
-  .audience-item p {
-    font-size: 0.9rem;
-    color: rgb(var(--gray-dark));
-    line-height: 1.6;
+  .delivery-steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
     margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .closing {
-    padding: 0.5rem 0 1rem;
-    text-align: center;
-  }
-
-  .closing-text {
-    font-size: 1rem;
-    line-height: 1.75;
-    color: rgb(var(--gray-dark));
-    max-width: 960px;
-    margin: 0 auto 1rem;
-  }
-
-  .closing-cta {
-    font-size: 1rem;
-    line-height: 1.7;
-    color: rgb(var(--gray-dark));
-    max-width: 960px;
-    margin: 0 auto 1.75rem;
-  }
-
-  .cta-button {
-    display: inline-block;
-    background: var(--accent);
-    color: white !important;
+  .delivery-steps li {
+    display: grid;
+    grid-template-columns: 2.2rem minmax(0, 1fr);
+    gap: var(--space-3);
+    align-items: start;
+    color: var(--color-ink);
     font-weight: 700;
-    font-size: 0.95rem;
-    padding: 0.7rem 1.5rem;
-    border-radius: 6px;
-    text-decoration: none !important;
-    transition: background 0.2s ease, transform 0.15s ease;
-    letter-spacing: 0.02em;
+    line-height: 1.35;
   }
 
-  .cta-button:hover {
-    background: #334155;
-    transform: translateY(-1px);
-    color: white !important;
+  .delivery-steps span {
+    color: var(--color-teal);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
   }
 
-  @media (max-width: 720px) {
-    .hero {
-      padding: 1.5rem 0 1.5rem;
+  .home-section {
+    scroll-margin-top: 6rem;
+  }
+
+  .fit-grid,
+  .service-grid,
+  .proof-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+
+  .fit-grid h3,
+  .service-grid h3,
+  .proof-grid h3 {
+    margin-bottom: var(--space-3);
+    font-size: 1.1rem;
+  }
+
+  .fit-grid p,
+  .service-grid p,
+  .proof-grid p {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 0.94rem;
+    line-height: var(--leading-normal);
+  }
+
+  .process-section {
+    padding: var(--space-12) 0;
+    border-top: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .process-line {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--space-3);
+  }
+
+  .process-line div {
+    position: relative;
+    padding-top: var(--space-6);
+  }
+
+  .process-line div::before {
+    content: "";
+    position: absolute;
+    top: 0.4rem;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--color-line);
+  }
+
+  .process-line div::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0.8rem;
+    height: 0.8rem;
+    border-radius: 50%;
+    background: var(--color-blue);
+    box-shadow: 0 0 0 5px rgba(var(--rgb-blue), 0.12);
+  }
+
+  .process-line strong,
+  .process-line span {
+    display: block;
+  }
+
+  .process-line span {
+    margin-top: var(--space-2);
+    color: var(--color-muted);
+    font-size: 0.86rem;
+    line-height: var(--leading-normal);
+  }
+
+  .service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .service-item {
+    padding: var(--space-6) 0;
+    border-top: 1px solid var(--color-line);
+  }
+
+  .proof-card {
+    overflow: hidden;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .proof-card img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+  }
+
+  .proof-card__body {
+    padding: var(--space-5, 1.25rem);
+  }
+
+  .proof-card__date {
+    margin: 0 0 var(--space-2);
+    color: var(--color-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  .lab-strip {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-8);
+    align-items: center;
+    padding: var(--space-8);
+    background:
+      linear-gradient(135deg, rgba(var(--rgb-teal), 0.1), rgba(var(--rgb-paper), 0.92) 42%),
+      var(--color-paper);
+  }
+
+  @media (max-width: 920px) {
+    .home {
+      gap: var(--space-16);
     }
 
-    .cards-grid,
-    .audience-grid {
+    .home-hero,
+    .lab-strip {
       grid-template-columns: 1fr;
+      min-height: 0;
+    }
+
+    .fit-grid,
+    .proof-grid,
+    .process-line {
+      grid-template-columns: 1fr;
+    }
+
+    .process-line div::before {
+      width: 2px;
+      height: 100%;
+    }
+
+    .process-line div {
+      padding-top: 0;
+      padding-left: var(--space-6);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .service-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .lab-strip {
+      padding: var(--space-5, 1.25rem);
     }
   }
 </style>

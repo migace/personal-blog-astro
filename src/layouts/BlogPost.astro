@@ -18,62 +18,72 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
 				width: calc(100% - 2em);
 				max-width: 100%;
 				margin: 0;
+				padding-top: var(--space-8);
 			}
 			.hero-image {
 				width: 100%;
+				max-width: 1120px;
+				margin: 0 auto;
 			}
 			.hero-image img {
 				display: block;
 				margin: 0 auto;
-				border-radius: 12px;
-				box-shadow: var(--box-shadow);
+				border: 1px solid var(--color-line);
+				border-radius: var(--radius-lg);
+				box-shadow: var(--shadow-lift);
 			}
 			.prose {
-				width: 720px;
+				width: var(--container-content);
 				max-width: calc(100% - 2em);
 				margin: auto;
-				padding: 1em;
-				color: rgb(var(--gray-dark));
+				padding: var(--space-8) 0 var(--space-16);
+				color: var(--color-graphite);
 			}
 			.title {
-				margin-bottom: 1em;
-				padding: 1em 0;
-				text-align: center;
+				margin-bottom: var(--space-8);
+				padding: var(--space-8) 0 var(--space-4);
+				border-bottom: 1px solid var(--color-line);
 				line-height: 1;
 			}
 			.title h1 {
-				margin: 0 0 0.5em 0;
+				margin: 0;
+				font-size: clamp(2.1rem, 4vw, 3.35rem);
 			}
 			.date {
-				margin-bottom: 0.5em;
-				color: rgb(var(--gray));
+				margin-bottom: var(--space-3);
+				color: var(--color-muted);
+				font-size: 0.82rem;
+				font-weight: 700;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
 			}
 			.last-updated-on {
-				font-style: italic;
+				margin-top: var(--space-1);
+				font-style: normal;
+				letter-spacing: 0;
+				text-transform: none;
 			}
 		</style>
 		<style is:global>
 			/* === Interactive code block === */
 			.prose .code-card {
-				--code-bg: #0b1020;
+				--code-bg: var(--color-code);
 				--code-border: rgba(148, 163, 184, 0.18);
 				--code-fg: #e2e8f0;
 				--code-muted: #94a3b8;
 				position: relative;
 				margin: 1.75em 0;
-				border-radius: 14px;
-				background: linear-gradient(180deg, #0b1020 0%, #0a0f1c 100%);
+				border-radius: var(--radius-lg);
+				background: linear-gradient(180deg, var(--color-code) 0%, #0a0f1c 100%);
 				border: 1px solid var(--code-border);
-				box-shadow:
-					0 1px 0 rgba(255, 255, 255, 0.03) inset,
-					0 10px 30px rgba(15, 18, 25, 0.18);
+				box-shadow: var(--shadow-code);
 				overflow: hidden;
 				transition: box-shadow 0.25s ease, transform 0.25s ease;
 			}
 			.prose .code-card:hover {
 				box-shadow:
 					0 1px 0 rgba(255, 255, 255, 0.05) inset,
-					0 20px 50px rgba(37, 99, 235, 0.18);
+					0 20px 50px rgba(var(--rgb-blue), 0.18);
 			}
 			.prose .code-card__bar {
 				display: flex;
@@ -110,7 +120,7 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
 				align-items: center;
 				padding: 2px 8px;
 				border-radius: 999px;
-				background: rgba(37, 99, 235, 0.14);
+				background: rgba(var(--rgb-blue), 0.14);
 				color: #93c5fd;
 				font-weight: 600;
 				letter-spacing: 0.04em;
@@ -141,8 +151,8 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
 				transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 			}
 			.prose .code-card__btn:hover {
-				background: rgba(37, 99, 235, 0.16);
-				border-color: rgba(37, 99, 235, 0.5);
+				background: rgba(var(--rgb-blue), 0.16);
+				border-color: rgba(var(--rgb-blue), 0.5);
 				color: #dbeafe;
 			}
 			.prose .code-card__btn[data-state="ok"] {
@@ -220,8 +230,8 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
 			.prose .code-card[data-collapsible="true"] .code-card__expand { display: block; }
 
 			.prose code:not(pre code) {
-				background: rgba(37, 99, 235, 0.1);
-				color: var(--accent-dark);
+				background: rgba(var(--rgb-blue), 0.1);
+				color: var(--color-blue-deep);
 				padding: 1px 6px;
 				border-radius: 6px;
 				font-size: 0.92em;
@@ -249,7 +259,6 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
 							}
 						</div>
 						<h1>{title}</h1>
-						<hr />
 					</div>
 					<slot />
 				</div>
