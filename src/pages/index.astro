@@ -5,7 +5,7 @@ import BaseHead from "../components/BaseHead.astro";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import FormattedDate from "../components/FormattedDate.astro";
-import { SITE_TITLE, SITE_DESCRIPTION } from "../consts";
+import { SITE_AUTHOR, SITE_TITLE, SITE_DESCRIPTION } from "../consts";
 
 const posts = await getCollection("blog");
 const proofSlugs = [
@@ -21,12 +21,41 @@ const isBlogPost = (
 const proofPosts = proofSlugs
   .map((slug) => posts.find((post) => post.id === slug))
   .filter(isBlogPost);
+
+const homeStructuredData = [
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: new URL("/", Astro.site).toString(),
+    author: {
+      "@type": "Person",
+      name: SITE_AUTHOR,
+      url: new URL("/about/", Astro.site).toString(),
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: SITE_TITLE,
+    url: new URL("/", Astro.site).toString(),
+    founder: {
+      "@type": "Person",
+      name: SITE_AUTHOR,
+    },
+  },
+];
 ---
 
 <!doctype html>
 <html lang="en">
   <head>
-    <BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+    <BaseHead
+      title={`${SITE_TITLE} — Full-stack AI consulting by Michał Gacek`}
+      description={SITE_DESCRIPTION}
+      structuredData={homeStructuredData}
+    />
   </head>
   <body>
     <Header />
@@ -185,9 +214,16 @@ const proofPosts = proofSlugs
           {
             proofPosts.map((post) => (
               <a class="proof-card card card--proof" href={`/blog/${post.id}/`}>
-                {post.data.heroImage && (
-                  <img src={post.data.heroImage} alt="" width="720" height="405" />
-                )}
+	                {post.data.heroImage && (
+	                  <img
+	                    src={post.data.heroImage}
+	                    alt={post.data.heroAlt ?? post.data.title}
+	                    width="720"
+	                    height="405"
+	                    loading="lazy"
+	                    decoding="async"
+	                  />
+	                )}
                 <div class="proof-card__body">
                   <p class="proof-card__date">
                     <FormattedDate date={post.data.pubDate} />

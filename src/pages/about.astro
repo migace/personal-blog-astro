@@ -2,6 +2,7 @@
 import BaseHead from "../components/BaseHead.astro";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
+import { SITE_AUTHOR, SITE_TITLE } from "../consts";
 
 const experience = [
   {
@@ -30,6 +31,22 @@ const experience = [
     text: "Booking engine development with React, Redux, AWS deployments, and engineering discipline.",
   },
 ];
+
+const aboutDescription =
+  "Michał Gacek is a senior full-stack engineer and AI-focused technical partner helping teams solve business problems from concept to production.";
+const personStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  name: SITE_AUTHOR,
+  url: new URL("/about/", Astro.site).toString(),
+  worksFor: {
+    "@type": "Organization",
+    name: SITE_TITLE,
+    url: new URL("/", Astro.site).toString(),
+  },
+  jobTitle: "Senior full-stack engineer and AI technical partner",
+  sameAs: ["https://github.com/migace", "https://twitter.com/gacek_michal"],
+};
 ---
 
 <!doctype html>
@@ -37,7 +54,8 @@ const experience = [
   <head>
     <BaseHead
       title="About Michał Gacek — Tiptopdesign"
-      description="Michał Gacek is a senior full-stack engineer and AI-focused technical partner helping teams solve business problems from concept to production."
+      description={aboutDescription}
+      structuredData={personStructuredData}
     />
   </head>
   <body>

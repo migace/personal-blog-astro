@@ -4,3 +4,4 @@
 export const SITE_TITLE = "Tiptopdesign";
 export const SITE_DESCRIPTION =
   "Full-stack AI consulting and practical engineering by Michał Gacek for business problems that need real execution.";
+export const SITE_AUTHOR = "Michał Gacek";
