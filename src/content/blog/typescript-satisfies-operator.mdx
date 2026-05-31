@@ -6,7 +6,7 @@ heroImage: "/typescript-satisfies.webp"
 heroAlt: "TypeScript satisfies operator illustration with typed object constraints"
 heroWidth: 1035
 heroHeight: 555
-tags: ["TypeScript", "Code quality"]
+tags: ["TypeScript", "Quality"]
 ---
 
 TypeScript continues to evolve with new features that enhance type safety and developer experience. One such addition is the `satisfies` operator, introduced in TypeScript 4.9. This operator allows developers to enforce type constraints while preserving inferred types. In this article, we'll explore what the `satisfies` operator does, when to use it, and how it can improve type safety in your projects.
@@ -20,7 +20,7 @@ The `satisfies` operator is a type assertion mechanism that ensures a value conf
 - Retain the precise type of values for better inference.
 - Get the benefits of both type checking and flexible type inference.
 
-### **Basic Syntax**
+### Basic Syntax
 ```typescript
 const user = {
   id: 1,
@@ -32,11 +32,11 @@ In this example, `user` must satisfy the given type, but its inferred type remai
 
 ---
 
-## **Key Benefits of `satisfies`**
-### 1. **Preserving Literal Types**
+## Key Benefits of `satisfies`
+### 1. Preserving Literal Types
 One of the main advantages of `satisfies` is that it retains literal types instead of widening them to general types.
 
-#### **Example: Without `satisfies`**
+#### Example: without `satisfies`
 ```typescript
 const theme: { color: string; } = {
   color: "blue",
@@ -46,7 +46,7 @@ const colorChoice = theme.color; // type: string (literal type lost)
 ```
 Here, `colorChoice` is inferred as `string`, losing the specific literal type (`"blue"`).
 
-#### **Example: With `satisfies`**
+#### Example: with `satisfies`
 ```typescript
 const theme = {
   color: "blue",
@@ -58,10 +58,10 @@ With `satisfies`, `colorChoice` retains its literal type (`"blue"`), making it u
 
 ---
 
-### 2. **Enforcing Shape Without Excess Property Checks**
+### 2. Enforcing Shape Without Excess Property Checks
 When defining objects, TypeScript may throw errors if unexpected properties exist. The `satisfies` operator ensures a shape is followed without restricting extra properties.
 
-#### **Example: Type Checking Without Property Removal**
+#### Example: type checking without property removal
 ```typescript
 const buttonStyle = {
   borderRadius: 8,
@@ -73,10 +73,10 @@ The `buttonStyle` object satisfies the required shape but still allows `padding`
 
 ---
 
-### 3. **Better Inference for Mapped Types**
+### 3. Better Inference for Mapped Types
 When working with mapped types, `satisfies` helps retain better inference without needing explicit type annotations.
 
-#### **Example: Mapped Type with `satisfies`**
+#### Example: mapped type with `satisfies`
 ```typescript
 type RolePermissions = {
   admin: string[];
@@ -94,7 +94,7 @@ Here, the array of permissions remains type-safe and maintains its inferred valu
 
 ---
 
-## **When Should You Use `satisfies`?**
+## When Should You Use `satisfies`?
 Use the `satisfies` operator when:
 - You want to enforce a structure but retain literal type information.
 - You need to maintain type safety while avoiding excess property checks.
@@ -107,7 +107,7 @@ Avoid using `satisfies` when:
 
 ---
 
-## **Summary**
-The `satisfies` operator is a powerful tool in TypeScript that helps enforce type constraints while maintaining inferred types. It provides benefits in retaining literal types, preventing excess property checks, and improving inference in mapped types. By integrating `satisfies` into your TypeScript workflow, you can achieve better type safety without sacrificing flexibility.
+## Summary
+The `satisfies` operator is a practical tool in TypeScript that enforces type constraints while keeping inferred types intact. It helps retain literal types, avoids excess property checks, and improves inference for mapped types - so you get type safety without giving up flexibility.
 
-Are you using `satisfies` in your TypeScript projects? Let me know your thoughts in the email message! 🚀
+If you're weighing `satisfies` against plain annotations in a real configuration or design-system setup, [get in touch](/contact/) - I'm happy to talk through the trade-offs.

@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useReducer,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 export type LogLevel = "hit" | "miss" | "info" | "muted";
 
@@ -69,7 +63,7 @@ export function useCacheAsideSimulation() {
     {
       id: 0,
       level: "muted",
-      text: "· ready — click GET to send a request",
+      text: "· ready - click GET to send a request",
     },
   ]);
 
@@ -123,7 +117,7 @@ export function useCacheAsideSimulation() {
 
     const timeoutId = window.setTimeout(() => {
       setCache(null);
-      pushLog("muted", "⏱  TTL expired — key evicted from Redis");
+      pushLog("muted", "⏱  TTL expired - key evicted from Redis");
     }, remainingMs);
 
     return () => {
@@ -131,7 +125,7 @@ export function useCacheAsideSimulation() {
     };
   }, [cache, pushLog]);
 
-  // NOTE: intentionally not memoized — must recompute on every forceTick
+  // NOTE: intentionally not memoized - must recompute on every forceTick
   // re-render so the TTL bar and countdown text update live.
   const ttlInfo = (() => {
     if (!cache) {
@@ -186,7 +180,7 @@ export function useCacheAsideSimulation() {
         return;
       }
 
-      pushLog("miss", "✗ cache MISS — falling through to DB");
+      pushLog("miss", "✗ cache MISS - falling through to DB");
 
       await animateWire("db", "fwd");
       await sleep(DB_LATENCY_MS);
@@ -219,12 +213,12 @@ export function useCacheAsideSimulation() {
 
   const handleInvalidate = useCallback(() => {
     if (!cache) {
-      pushLog("muted", `· DEL product:${PRODUCT.id} — already empty`);
+      pushLog("muted", `· DEL product:${PRODUCT.id} - already empty`);
       return;
     }
 
     setCache(null);
-    pushLog("info", `· DEL product:${PRODUCT.id} — cache invalidated`);
+    pushLog("info", `· DEL product:${PRODUCT.id} - cache invalidated`);
   }, [cache, pushLog]);
 
   const handleReset = useCallback(() => {

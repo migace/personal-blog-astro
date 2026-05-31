@@ -12,15 +12,15 @@ import { SITE_TITLE } from "../consts";
     </a>
 
     <div class="internal-links">
-      <HeaderLink href="/">Home</HeaderLink>
-      <a href="/#services">Services</a>
+      <HeaderLink href="/" data-spy="home">Home</HeaderLink>
+      <a href="/#services" data-spy="services">Services</a>
       <HeaderLink href="/blog">Blog</HeaderLink>
       <HeaderLink href="/about">About</HeaderLink>
     </div>
 
     <div class="nav-actions">
       <SocialLinks compact />
-      <a class="button button--primary nav-cta" href="mailto:michal.gacek@tiptopdesign.pl">
+      <a class="button button--primary nav-cta" href="/contact/">
         Contact
       </a>
     </div>
@@ -142,3 +142,29 @@ import { SITE_TITLE } from "../consts";
     }
   }
 </style>
+
+<script>
+  function initNavScrollSpy() {
+    const path = window.location.pathname;
+    if (path !== "/" && path !== "") return;
+
+    const homeLink = document.querySelector<HTMLAnchorElement>('[data-spy="home"]');
+    const servicesLink = document.querySelector<HTMLAnchorElement>('[data-spy="services"]');
+    const servicesSection = document.getElementById("services");
+    if (!homeLink || !servicesLink || !servicesSection) return;
+
+    const update = () => {
+      const offset = 120;
+      const reachedServices =
+        window.scrollY + offset >= servicesSection.offsetTop;
+      homeLink.classList.toggle("active", !reachedServices);
+      servicesLink.classList.toggle("active", reachedServices);
+    };
+
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+  }
+
+  initNavScrollSpy();
+</script>

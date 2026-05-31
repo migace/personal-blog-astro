@@ -4,9 +4,27 @@ import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import FormattedDate from '../components/FormattedDate.astro';
+import PostFooter from '../components/PostFooter.astro';
 import { SITE_AUTHOR, SITE_TITLE } from '../consts';
+import { slugifyTag } from '../utils/posts';
 
-type Props = CollectionEntry<'blog'>['data'];
+interface PostLink {
+	slug: string;
+	title: string;
+}
+
+interface RelatedPost {
+	slug: string;
+	title: string;
+	description: string;
+}
+
+type Props = CollectionEntry<'blog'>['data'] & {
+	prevPost?: PostLink;
+	nextPost?: PostLink;
+	relatedPosts?: RelatedPost[];
+	readingTime?: number;
+};
 
 const {
 	title,
@@ -18,6 +36,10 @@ const {
 	heroWidth,
 	heroHeight,
 	tags,
+	prevPost,
+	nextPost,
+	relatedPosts,
+	readingTime,
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
@@ -43,6 +65,31 @@ const articleStructuredData = {
 	...(imageURL ? { image: [imageURL] } : {}),
 	...(tags?.length ? { keywords: tags.join(", ") } : {}),
 };
+
+const breadcrumbStructuredData = {
+	"@context": "https://schema.org",
+	"@type": "BreadcrumbList",
+	itemListElement: [
+		{
+			"@type": "ListItem",
+			position: 1,
+			name: "Home",
+			item: new URL("/", Astro.site).toString(),
+		},
+		{
+			"@type": "ListItem",
+			position: 2,
+			name: "Blog",
+			item: new URL("/blog/", Astro.site).toString(),
+		},
+		{
+			"@type": "ListItem",
+			position: 3,
+			name: title,
+			item: canonicalURL.toString(),
+		},
+	],
+};
 ---
 
 <html lang="en">
@@ -56,7 +103,7 @@ const articleStructuredData = {
 			publishedTime={pubDate}
 			updatedTime={updatedDate ?? pubDate}
 			tags={tags}
-			structuredData={articleStructuredData}
+			structuredData={[articleStructuredData, breadcrumbStructuredData]}
 		/>
 		<style>
 			main {
@@ -101,6 +148,35 @@ const articleStructuredData = {
 				font-weight: 700;
 				letter-spacing: 0.08em;
 				text-transform: uppercase;
+			}
+			.reading-time::before {
+				content: "·";
+				margin: 0 0.5rem;
+				color: var(--color-line);
+			}
+			.post-topics {
+				display: flex;
+				flex-wrap: wrap;
+				gap: var(--space-2);
+				margin-top: var(--space-4);
+			}
+			.post-topic {
+				display: inline-flex;
+				align-items: center;
+				padding: 0.25rem 0.65rem;
+				border: 1px solid var(--color-line);
+				border-radius: 999px;
+				background: rgba(var(--rgb-paper), 0.8);
+				color: var(--color-graphite);
+				font-size: 0.74rem;
+				font-weight: 700;
+				letter-spacing: 0.02em;
+				text-decoration: none;
+				transition: border-color 0.18s ease, color 0.18s ease;
+			}
+			.post-topic:hover {
+				border-color: rgba(var(--rgb-blue), 0.35);
+				color: var(--color-blue-deep);
 			}
 			.last-updated-on {
 				margin-top: var(--space-1);
@@ -306,6 +382,7 @@ const articleStructuredData = {
 					<div class="title">
 						<div class="date">
 							<FormattedDate date={pubDate} />
+							{readingTime && <span class="reading-time">{readingTime} min read</span>}
 							{
 								updatedDate && (
 									<div class="last-updated-on">
@@ -315,8 +392,20 @@ const articleStructuredData = {
 							}
 						</div>
 						<h1>{title}</h1>
+						{
+							tags?.length && (
+								<div class="post-topics">
+									{tags.map((tag) => (
+										<a class="post-topic" href={`/blog/tags/${slugifyTag(tag)}/`}>
+											{tag}
+										</a>
+									))}
+								</div>
+							)
+						}
 					</div>
 					<slot />
+					<PostFooter prevPost={prevPost} nextPost={nextPost} relatedPosts={relatedPosts} />
 				</div>
 			</article>
 		</main>

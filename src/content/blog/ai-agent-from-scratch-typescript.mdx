@@ -1,23 +1,23 @@
 ---
-title: "How I Built an AI Agent From Scratch in TypeScript — No Frameworks, No Magic"
-description: "A deep dive into building a real AI agent from scratch in TypeScript — no LangChain, no CrewAI, just a loop, the OpenAI API, and a few small libraries. Learn the architecture, the decisions, and the lessons that frameworks hide from you."
+title: "How I Built an AI Agent From Scratch in TypeScript - No Frameworks, No Magic"
+description: "A deep dive into building a real AI agent from scratch in TypeScript - no LangChain, no CrewAI, just a loop, the OpenAI API, and a few small libraries. Learn the architecture, the decisions, and the lessons that frameworks hide from you."
 pubDate: "March 28 2026"
 heroImage: "/ai-agent-from-scratch.webp"
 heroAlt: "Architecture diagram for a TypeScript AI agent built without frameworks"
 heroWidth: 1400
 heroHeight: 764
-tags: ["AI agents", "TypeScript", "Systems"]
+tags: ["AI Systems", "TypeScript"]
 ---
 
 *Why building the loop yourself teaches you more about AI agents than any framework tutorial ever will.*
 
 ---
 
-Over the last months, I've been building AI-powered features — from internal tools that automate developer workflows to product-facing agents that talk to real users. And one thing became clear quickly: most "AI agent" tutorials don't prepare you for real-world usage.
+Over the last months, I've been building AI-powered features - from internal tools that automate developer workflows to product-facing agents that talk to real users. And one thing became clear quickly: most "AI agent" tutorials don't prepare you for real-world usage.
 
 They either hide everything behind frameworks so you never learn what's actually happening, or oversimplify the problem to a toy example that falls apart the moment you add a second tool.
 
-So I decided to build an agent from scratch — no LangChain, no CrewAI, no orchestration framework. Just TypeScript, the OpenAI API, and a handful of small libraries for things that aren't the point (persistence, spinners, env vars). Not as a learning exercise. As a foundation I can actually reason about and extend when things go wrong in production.
+So I decided to build an agent from scratch - no LangChain, no CrewAI, no orchestration framework. Just TypeScript, the OpenAI API, and a handful of small libraries for things that aren't the point (persistence, spinners, env vars). Not as a learning exercise. As a foundation I can actually reason about and extend when things go wrong in production.
 
 The result is a CLI agent that receives a natural language message, decides whether it needs to call external tools, executes them, and keeps reasoning until it has a final answer. It's ~200 lines of code, but writing it forced me to understand the parts frameworks usually hide: control flow, tool boundaries, memory, and failure modes.
 
@@ -25,7 +25,7 @@ And here's the thing most people overcomplicate:
 
 > **An agent is just a loop.**
 >
-> Everything else — frameworks, orchestration layers, abstractions — is built on top of this single idea. If you understand the loop, you understand agents.
+> Everything else - frameworks, orchestration layers, abstractions - is built on top of this single idea. If you understand the loop, you understand agents.
 
 That's the thesis of this entire article. Let me show you what I mean.
 
@@ -134,7 +134,7 @@ Behind the scenes, the agent needs to:
   }
 `}</style>
 
-This is non-trivial because the agent doesn't just call a function — it *decides* to call a function. The LLM acts as a reasoning engine that chooses which tool to invoke (if any), interprets the result, and may even loop multiple times before settling on a final answer. That's the fundamental difference between a chatbot and an agent.
+This is non-trivial because the agent doesn't just call a function - it *decides* to call a function. The LLM acts as a reasoning engine that chooses which tool to invoke (if any), interprets the result, and may even loop multiple times before settling on a final answer. That's the fundamental difference between a chatbot and an agent.
 
 From a product perspective, this pattern is everywhere: customer support bots that look up orders, coding assistants that run tests, research agents that query multiple APIs. The tool-augmented reasoning loop is the backbone of all of them.
 
@@ -162,7 +162,7 @@ User message
 Final response printed to terminal
 ```
 
-**Input:** A string from the command line — any natural language message.
+**Input:** A string from the command line - any natural language message.
 
 **Processing:** An iterative loop where the LLM reasons about the message, optionally invokes tools, and refines its response based on tool outputs.
 
@@ -174,7 +174,7 @@ The entire system is ~200 lines of TypeScript across 10 files. No dependency inj
 
 ## Step-by-Step Implementation
 
-### Step 1 — Project Setup and Entry Point
+### Step 1 - Project Setup and Entry Point
 
 The tech stack is deliberately minimal:
 
@@ -187,7 +187,7 @@ The tech stack is deliberately minimal:
 | `dotenv` | Environment variable loading |
 | `uuid` | Unique IDs for stored messages |
 
-The entry point is `index.ts` — and it's intentionally boring:
+The entry point is `index.ts` - and it's intentionally boring:
 
 ```typescript
 import 'dotenv/config'
@@ -216,7 +216,7 @@ This file does exactly three things: loads environment variables, parses the CLI
 
 ---
 
-### Step 2 — The Type System
+### Step 2 - The Type System
 
 Before diving into the agent logic, let's look at the types that hold everything together (`types.ts`):
 
@@ -240,15 +240,15 @@ export interface ToolDefinition {
 }
 ```
 
-`AIMessage` is a discriminated union covering the three message types in an OpenAI conversation: assistant messages (which may contain tool calls), user messages, and tool result messages. This single type flows through the entire system — from memory storage to LLM input.
+`AIMessage` is a discriminated union covering the three message types in an OpenAI conversation: assistant messages (which may contain tool calls), user messages, and tool result messages. This single type flows through the entire system - from memory storage to LLM input.
 
-`ToolDefinition` pairs a name and description with a Zod schema for parameters. The Zod schema does double duty: it validates arguments at runtime *and* gets converted into the JSON Schema that OpenAI's function calling API expects. One schema, two purposes — no drift between what the LLM sees and what the code enforces.
+`ToolDefinition` pairs a name and description with a Zod schema for parameters. The Zod schema does double duty: it validates arguments at runtime *and* gets converted into the JSON Schema that OpenAI's function calling API expects. One schema, two purposes - no drift between what the LLM sees and what the code enforces.
 
 ---
 
-### Step 3 — The Core Agent Loop
+### Step 3 - The Core Agent Loop
 
-This is the heart of the entire system — the file that makes it an *agent* and not just a chatbot (`src/agent.ts`):
+This is the heart of the entire system - the file that makes it an *agent* and not just a chatbot (`src/agent.ts`):
 
 ```typescript
 import type { ToolDefinition } from '../types'
@@ -315,19 +315,19 @@ export const runAgent = async ({ userMessage, tools }: AgentParams) => {
 
 Let me break down the critical decisions embedded in this code.
 
-**The loop structure.** The `while` loop with a counter is the simplest possible implementation of the think-act-observe cycle. Each iteration: load full history → ask the LLM → check what it returned. If it returned text, we're done. If it returned tool calls, execute them and loop again. This is the same pattern that LangChain's `AgentExecutor`, AutoGPT, and every other agent framework implements — just without the abstraction layers.
+**The loop structure.** The `while` loop with a counter is the simplest possible implementation of the think-act-observe cycle. Each iteration: load full history → ask the LLM → check what it returned. If it returned text, we're done. If it returned tool calls, execute them and loop again. This is the same pattern that LangChain's `AgentExecutor`, AutoGPT, and every other agent framework implements - just without the abstraction layers.
 
-**Persisting before reasoning.** The user message is saved to the database *before* the loop starts. Every assistant response and tool result is also persisted immediately. This means if the process crashes mid-loop, you don't lose the conversation. It also means the next invocation picks up where the last one left off — the agent has memory across sessions by default.
+**Persisting before reasoning.** The user message is saved to the database *before* the loop starts. Every assistant response and tool result is also persisted immediately. This means if the process crashes mid-loop, you don't lose the conversation. It also means the next invocation picks up where the last one left off - the agent has memory across sessions by default.
 
-**Error handling as conversation.** When a tool throws, the error message is wrapped in a `role: 'tool'` message and fed back to the LLM. The agent doesn't crash — it tells the model "this tool failed" and lets the model decide what to do next. This is a critical pattern: **errors are data, not exceptions**.
+**Error handling as conversation.** When a tool throws, the error message is wrapped in a `role: 'tool'` message and fed back to the LLM. The agent doesn't crash - it tells the model "this tool failed" and lets the model decide what to do next. This is a critical pattern: **errors are data, not exceptions**.
 
-**The iteration cap.** `MAX_ITERATIONS = 20` is a safety net. Without it, a confused model could loop forever — calling tools that return unhelpful results, then calling them again. Twenty iterations is generous enough for complex multi-tool workflows but prevents runaway API costs.
+**The iteration cap.** `MAX_ITERATIONS = 20` is a safety net. Without it, a confused model could loop forever - calling tools that return unhelpful results, then calling them again. Twenty iterations is generous enough for complex multi-tool workflows but prevents runaway API costs.
 
 **The third exit path.** If the response has neither `content` nor `tool_calls`, something unexpected happened. Rather than throwing, the agent returns a graceful message. Defensive programming matters when your control flow depends on an LLM's output.
 
 ---
 
-### Step 4 — The LLM Layer
+### Step 4 - The LLM Layer
 
 `src/llm.ts` is where the agent talks to OpenAI:
 
@@ -355,7 +355,7 @@ A few things worth noting:
 
 **`zodFunction` is doing heavy lifting.** OpenAI's helper takes a Zod schema and converts it into the JSON Schema format that the function calling API expects. Tool authors define their parameters once in Zod and get both runtime validation and API-compatible schemas for free.
 
-**`tool_choice: 'auto'`** lets the model decide whether to call a tool or respond directly. Not every message needs a tool — sometimes the user just says "thanks" and the agent should respond naturally.
+**`tool_choice: 'auto'`** lets the model decide whether to call a tool or respond directly. Not every message needs a tool - sometimes the user just says "thanks" and the agent should respond naturally.
 
 **`parallel_tool_calls: false`** is a deliberate constraint. OpenAI's API can return multiple tool calls in a single response, but I disabled that. Why? Because the agent loop processes tool calls sequentially, and parallel execution would require concurrency handling, race conditions on the message history, and more complex error recovery. Sequential is the right default. You can always add parallelism later when you actually need it.
 
@@ -372,7 +372,7 @@ Four sentences are enough. The tool descriptions (embedded in the Zod schemas) c
 
 ---
 
-### Step 5 — Tools: Definition and Execution
+### Step 5 - Tools: Definition and Execution
 
 Each tool is a self-contained module in `src/tools/` with two exports: a definition and a function. Here's the image generation tool:
 
@@ -411,9 +411,9 @@ export const generateImage: ToolFn<Args, string> = async ({ toolArgs }) => {
 }
 ```
 
-There's a subtle but important pattern here: the `reasoning` parameter. Every tool requires the LLM to explain *why* it's using that tool. This doesn't affect execution — the reasoning string is never used in the function body. But it forces the model to articulate its decision before acting, which improves tool selection accuracy. It's a lightweight form of chain-of-thought prompting baked into the tool schema itself.
+There's a subtle but important pattern here: the `reasoning` parameter. Every tool requires the LLM to explain *why* it's using that tool. This doesn't affect execution - the reasoning string is never used in the function body. But it forces the model to articulate its decision before acting, which improves tool selection accuracy. It's a lightweight form of chain-of-thought prompting baked into the tool schema itself.
 
-Tool dispatch happens in the central router — `src/toolRunner.ts`:
+Tool dispatch happens in the central router - `src/toolRunner.ts`:
 
 ```typescript
 export const runTool = async (
@@ -442,7 +442,7 @@ Yes, it's a switch statement. Not a registry pattern, not a plugin system, not a
 
 ---
 
-### Step 6 — Memory and Persistence
+### Step 6 - Memory and Persistence
 
 `src/memory.ts` handles conversation state:
 
@@ -474,7 +474,7 @@ This is the simplest possible memory implementation: store everything, replay ev
 
 ### Why no framework?
 
-Frameworks like LangChain provide abstractions for chains, agents, memory, and tools. But abstractions have a cost: when something breaks, you're debugging the framework, not your logic. For learning — and for small, focused agents — the overhead isn't worth it. Every line in this codebase does something I can explain. That's the point.
+Frameworks like LangChain provide abstractions for chains, agents, memory, and tools. But abstractions have a cost: when something breaks, you're debugging the framework, not your logic. For learning - and for small, focused agents - the overhead isn't worth it. Every line in this codebase does something I can explain. That's the point.
 
 ### Why sequential tool calls?
 
@@ -501,7 +501,7 @@ LowDB writes to a plain JSON file. It's not concurrent-safe, it doesn't scale, a
 
 **No input validation on tool arguments.** The Zod schemas define the expected shape, but `toolRunner.ts` does a raw `JSON.parse` without validating against the schema. If the LLM returns malformed arguments (rare but possible), the tool gets garbage input. I should be calling `.parse()` on the Zod schema before passing arguments to the tool function.
 
-**Memory grows unbounded.** Every message is stored forever. After a long session, you're sending thousands of tokens to the LLM on every turn — most of it irrelevant.
+**Memory grows unbounded.** Every message is stored forever. After a long session, you're sending thousands of tokens to the LLM on every turn - most of it irrelevant.
 
 **No observability.** There's no logging beyond the terminal spinner. In production, I'd want structured logs for every LLM call (tokens used, latency, model response), every tool execution (duration, success/failure), and every iteration of the loop. You can't improve what you can't measure.
 
@@ -511,15 +511,15 @@ LowDB writes to a plain JSON file. It's not concurrent-safe, it doesn't scale, a
 
 Let me make this concrete with something that happened recently.
 
-I was reviewing the output of an AI-powered feature in one of my projects — a tool-augmented agent similar to this one, but integrated into a product workflow. The agent was supposed to fetch data from an API, validate it against business rules, and return a structured response.
+I was reviewing the output of an AI-powered feature in one of my projects - a tool-augmented agent similar to this one, but integrated into a product workflow. The agent was supposed to fetch data from an API, validate it against business rules, and return a structured response.
 
 It worked. Technically. The data was correct, the response was well-formatted. But the output was correct while the path was wrong: the agent chose a slower, more expensive endpoint instead of a cached one, because nothing in the tool description told the model that cost should influence the decision.
 
 That's when something clicked for me:
 
-**AI agents are not just about generating correct outputs — they're about making good decisions inside a system.** And those decisions are only as good as the context you give the model. A vague tool description isn't just sloppy — it's a production cost leak.
+**AI agents are not just about generating correct outputs - they're about making good decisions inside a system.** And those decisions are only as good as the context you give the model. A vague tool description isn't just sloppy - it's a production cost leak.
 
-This is why I obsess over `.describe()` strings in Zod schemas. This is why the `reasoning` parameter exists in every tool in this repo. These aren't academic choices — they come from watching agents make expensive mistakes in real systems.
+This is why I obsess over `.describe()` strings in Zod schemas. This is why the `reasoning` parameter exists in every tool in this repo. These aren't academic choices - they come from watching agents make expensive mistakes in real systems.
 
 Understanding the loop matters more than using a framework, because the loop is where you see these problems. Frameworks hide them.
 
@@ -527,11 +527,11 @@ Understanding the loop matters more than using a framework, because the loop is 
 
 ## How This Translates to Real Products
 
-I've seen this exact pattern emerge across multiple products — from internal tooling to customer-facing AI features. Regardless of the domain, the architecture converges to the same loop. The only things that change are the tools and the prompts.
+I've seen this exact pattern emerge across multiple products - from internal tooling to customer-facing AI features. Regardless of the domain, the architecture converges to the same loop. The only things that change are the tools and the prompts.
 
 **Customer support bots.** Replace the dad joke tool with an order lookup tool and a refund processing tool. The agent loop handles the conversation flow; the tools handle the business logic.
 
-**Internal developer tools.** An agent that can query your database, check CI status, and post Slack messages. Each capability is a tool. The LLM decides which ones to use based on the developer's natural language request. This is one of the highest-ROI applications I've seen — developers get a natural language interface to their own infrastructure.
+**Internal developer tools.** An agent that can query your database, check CI status, and post Slack messages. Each capability is a tool. The LLM decides which ones to use based on the developer's natural language request. This is one of the highest-ROI applications I've seen - developers get a natural language interface to their own infrastructure.
 
 **Content generation pipelines.** An agent that researches a topic (web search tool), generates a draft (LLM response), creates accompanying images (DALL-E tool), and formats the output. The iterative loop means it can refine its work across multiple passes.
 
@@ -547,17 +547,17 @@ The key insight for product teams: **the agent loop is generic; the tools are wh
 >
 > **An agent is just a loop.**
 >
-> A while loop that calls an LLM, checks if it wants to do something, does it, and repeats. That's it. Everything else — every framework, every orchestration layer, every "agentic AI platform" — is built on top of this.
+> A while loop that calls an LLM, checks if it wants to do something, does it, and repeats. That's it. Everything else - every framework, every orchestration layer, every "agentic AI platform" - is built on top of this.
 
-I keep coming back to this because it reframes every decision. When someone asks "should I use LangChain or CrewAI?", the real question is: "do I understand the loop well enough to know what these frameworks are doing for me?" If the answer is no, the framework becomes a black box — and black boxes are where production bugs hide.
+I keep coming back to this because it reframes every decision. When someone asks "should I use LangChain or CrewAI?", the real question is: "do I understand the loop well enough to know what these frameworks are doing for me?" If the answer is no, the framework becomes a black box - and black boxes are where production bugs hide.
 
-**Tool descriptions matter more than system prompts.** I spent more time writing Zod `.describe()` strings than the system prompt. The model reads tool descriptions when deciding which tool to call — vague descriptions lead to wrong tool selections.
+**Tool descriptions matter more than system prompts.** I spent more time writing Zod `.describe()` strings than the system prompt. The model reads tool descriptions when deciding which tool to call - vague descriptions lead to wrong tool selections.
 
 **Errors should flow through the conversation, not crash the process.** When a tool fails, the worst thing you can do is throw an unhandled exception. Feed the error back to the LLM as a tool message. The model is surprisingly good at recovering.
 
 **Persistence is not optional.** Even for a CLI tool, saving conversation history transformed the debugging experience. Instead of re-running prompts, I could inspect `db.json` to see exactly what the model received and returned at every step. Treat your message history as an audit log.
 
-**Start without parallelism.** Sequential tool execution is easier to reason about, easier to debug, and sufficient for most use cases. Add parallelism when you have profiling data that proves you need it — not before.
+**Start without parallelism.** Sequential tool execution is easier to reason about, easier to debug, and sufficient for most use cases. Add parallelism when you have profiling data that proves you need it - not before.
 
 ---
 
@@ -567,14 +567,14 @@ Most developers start with frameworks. Install LangChain, follow the quickstart,
 
 I'd argue you should do the opposite.
 
-Build the loop yourself first. Feel the edges — the weird cases where the model returns neither content nor tool calls, the moment you realize unbounded memory is silently eating your token budget, the first time a tool fails and you have to decide whether to crash or recover.
+Build the loop yourself first. Feel the edges - the weird cases where the model returns neither content nor tool calls, the moment you realize unbounded memory is silently eating your token budget, the first time a tool fails and you have to decide whether to crash or recover.
 
 These are the moments that teach you agent architecture. Not the abstractions. Not the YAML configs. The raw loop.
 
-Once you understand it — *really* understand it — frameworks become a tool, not a crutch. You'll know what LangChain's `AgentExecutor` is doing because you've written your own. You'll know when to reach for CrewAI and when it's overkill because you've felt the boundaries of a single-agent loop.
+Once you understand it - *really* understand it - frameworks become a tool, not a crutch. You'll know what LangChain's `AgentExecutor` is doing because you've written your own. You'll know when to reach for CrewAI and when it's overkill because you've felt the boundaries of a single-agent loop.
 
 That's the difference between using AI and actually engineering it.
 
-The code is intentionally minimal — ~200 lines across 10 files. Fork it, add a tool, break something, fix it. That's how I learned. That's how you will too.
+The code is intentionally minimal - ~200 lines across 10 files. Fork it, add a tool, break something, fix it. That's how I learned. That's how you will too.
 
 Github repository: [https://github.com/migace/agent-ai-v1](https://github.com/migace/agent-ai-v1)

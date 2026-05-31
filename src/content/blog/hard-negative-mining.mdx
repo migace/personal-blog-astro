@@ -6,15 +6,15 @@ heroImage: "/hard-negative-mining.webp"
 heroAlt: "Machine learning diagram showing hard negative examples near a decision boundary"
 heroWidth: 1400
 heroHeight: 934
-tags: ["Machine learning", "Retrieval", "Evaluation"]
+tags: ["Machine Learning", "Quality"]
 ---
 
-Machine learning models — especially those used in search, recommendation systems, and computer vision — often fail not because they lack data, but because they lack the right data.
+Machine learning models - especially those used in search, recommendation systems, and computer vision - often fail not because they lack data, but because they lack the right data.
 One of the most powerful techniques to improve model robustness is Hard Negative Mining, a strategy that deliberately focuses the model on the most confusing, high-value mistakes.
 
 If you're building embeddings-based search, ranking systems, contrastive models (Siamese, Triplet, CLIP-like), or classifiers that struggle with look-alike examples, hard negative mining may be the missing piece.
 
-This post provides a senior-developer-level walkthrough of the idea, why it works, real-world applications, implementation patterns, and pitfalls — along with visuals you can use to explain the concept to your team.
+This post provides a senior-developer-level walkthrough of the idea, why it works, real-world applications, implementation patterns, and pitfalls - along with visuals you can use to explain the concept to your team.
 
 ---
 
@@ -31,7 +31,7 @@ Hard negatives expose confusion patterns and force the network to sharpen its in
 
 ### Why It Matters
 
-Most real-world datasets are full of “easy negatives” — examples that are obviously different.
+Most real-world datasets are full of “easy negatives” - examples that are obviously different.
 Training on them provides little value.
 
 **Example:**

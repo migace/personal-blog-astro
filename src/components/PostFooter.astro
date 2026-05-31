@@ -1,0 +1,245 @@
+---
+import SocialLinks from "./SocialLinks.astro";
+
+interface PostLink {
+  slug: string;
+  title: string;
+}
+
+interface RelatedPost {
+  slug: string;
+  title: string;
+  description: string;
+}
+
+interface Props {
+  prevPost?: PostLink;
+  nextPost?: PostLink;
+  relatedPosts?: RelatedPost[];
+}
+
+const { prevPost, nextPost, relatedPosts = [] } = Astro.props;
+---
+
+{
+  relatedPosts.length > 0 && (
+    <section class="post-related" aria-labelledby="post-related-title">
+      <h2 id="post-related-title" class="post-related__title">
+        Related articles
+      </h2>
+      <ul class="post-related__list">
+        {relatedPosts.map((post) => (
+          <li>
+            <a class="post-related__card card card--proof" href={`/blog/${post.slug}/`}>
+              <span class="post-related__name">{post.title}</span>
+              <span class="post-related__desc">{post.description}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+<aside class="post-cta card card--interactive" aria-labelledby="post-cta-title">
+  <div class="post-cta__copy">
+    <p class="eyebrow">Work with the author</p>
+    <h2 id="post-cta-title">Michał Gacek - full-stack & AI consulting</h2>
+    <p>
+      I help founders and product teams turn complex workflows and AI ideas
+      into maintainable systems that reach production. If this post maps to a
+      problem you are facing, describe it in two sentences and I will reply
+      within 24 hours.
+    </p>
+    <div class="post-cta__actions">
+      <a
+        class="button button--primary"
+        href="/contact/"
+      >
+        Discuss a project problem
+      </a>
+      <a class="button button--secondary" href="/#services">
+        See how I work
+      </a>
+    </div>
+    <div class="post-cta__social">
+      <SocialLinks />
+    </div>
+  </div>
+</aside>
+
+{
+  (prevPost || nextPost) && (
+    <nav class="post-nav" aria-label="More articles">
+      {prevPost ? (
+        <a class="post-nav__link post-nav__link--prev card card--proof" href={`/blog/${prevPost.slug}/`}>
+          <span class="post-nav__dir">← Previous</span>
+          <span class="post-nav__title">{prevPost.title}</span>
+        </a>
+      ) : (
+        <span class="post-nav__spacer" />
+      )}
+      {nextPost ? (
+        <a class="post-nav__link post-nav__link--next card card--proof" href={`/blog/${nextPost.slug}/`}>
+          <span class="post-nav__dir">Next →</span>
+          <span class="post-nav__title">{nextPost.title}</span>
+        </a>
+      ) : (
+        <span class="post-nav__spacer" />
+      )}
+    </nav>
+  )
+}
+
+<style>
+  .post-related {
+    margin-top: var(--space-12);
+    padding-top: var(--space-8);
+    border-top: 1px solid var(--color-line);
+  }
+
+  .post-related__title {
+    margin: 0 0 var(--space-5, 1.25rem);
+    font-size: 1.2rem;
+  }
+
+  .post-related__list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .post-related__card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    height: 100%;
+    padding: var(--space-5, 1.25rem);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .post-related__name {
+    color: var(--color-ink);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: var(--leading-tight);
+  }
+
+  .post-related__card:hover .post-related__name {
+    color: var(--color-blue-deep);
+  }
+
+  .post-related__desc {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--color-muted);
+    font-size: 0.88rem;
+    line-height: var(--leading-normal);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  .post-cta {
+    margin-top: var(--space-12);
+    padding: var(--space-8);
+    background:
+      linear-gradient(135deg, rgba(var(--rgb-teal), 0.1), rgba(var(--rgb-paper), 0.94) 48%),
+      var(--color-paper);
+  }
+
+  .post-cta__copy h2 {
+    margin: var(--space-2) 0 var(--space-3);
+    font-size: clamp(1.4rem, 2.4vw, 1.8rem);
+    line-height: var(--leading-tight);
+  }
+
+  .post-cta__copy p {
+    margin: 0;
+    max-width: 60ch;
+    color: var(--color-graphite);
+    font-size: 1rem;
+    line-height: var(--leading-relaxed);
+  }
+
+  .post-cta__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-6);
+  }
+
+  .post-cta__social {
+    margin-top: var(--space-6);
+    padding-top: var(--space-5, 1.25rem);
+    border-top: 1px solid var(--color-line);
+  }
+
+  .post-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-4);
+    margin-top: var(--space-6);
+  }
+
+  .post-nav__link {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-5, 1.25rem);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .post-nav__link--next {
+    align-items: flex-end;
+    text-align: right;
+  }
+
+  .post-nav__dir {
+    color: var(--color-blue-deep);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .post-nav__title {
+    color: var(--color-ink);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: var(--leading-tight);
+  }
+
+  .post-nav__link:hover .post-nav__title {
+    color: var(--color-blue-deep);
+  }
+
+  .post-nav__spacer {
+    display: block;
+  }
+
+  @media (max-width: 860px) {
+    .post-related__list {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .post-cta {
+      padding: var(--space-5, 1.25rem);
+    }
+
+    .post-nav {
+      grid-template-columns: 1fr;
+    }
+
+    .post-nav__link--next {
+      align-items: flex-start;
+      text-align: left;
+    }
+  }
+</style>

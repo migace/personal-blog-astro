@@ -6,6 +6,9 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import FormattedDate from "../components/FormattedDate.astro";
 import { SITE_AUTHOR, SITE_TITLE, SITE_DESCRIPTION } from "../consts";
+import { experience, testimonials } from "../data/experience";
+
+const companies = experience.map((item) => item.company);
 
 const posts = await getCollection("blog");
 const proofSlugs = [
@@ -33,6 +36,11 @@ const homeStructuredData = [
       "@type": "Person",
       name: SITE_AUTHOR,
       url: new URL("/about/", Astro.site).toString(),
+      sameAs: [
+        "https://www.linkedin.com/in/migace",
+        "https://github.com/migace",
+        "https://twitter.com/gacek_michal",
+      ],
     },
   },
   {
@@ -52,7 +60,7 @@ const homeStructuredData = [
 <html lang="en">
   <head>
     <BaseHead
-      title={`${SITE_TITLE} — Full-stack AI consulting by Michał Gacek`}
+      title={`${SITE_TITLE} - Full-stack AI consulting by Michał Gacek`}
       description={SITE_DESCRIPTION}
       structuredData={homeStructuredData}
     />
@@ -91,6 +99,13 @@ const homeStructuredData = [
             <li><span>05</span> Ship, measure, and iterate</li>
           </ol>
         </aside>
+      </section>
+
+      <section class="trust-strip" aria-label="Track record">
+        <p class="trust-strip__label">Senior full-stack work delivered across teams at</p>
+        <ul class="trust-strip__list">
+          {companies.map((company) => <li>{company}</li>)}
+        </ul>
       </section>
 
       <section class="home-section" aria-labelledby="fit-title">
@@ -165,38 +180,204 @@ const homeStructuredData = [
         </div>
       </section>
 
-      <section id="services" class="home-section" aria-labelledby="services-title">
+      <section id="services" class="home-section services-section" aria-labelledby="services-title">
         <div class="section-header">
           <p class="eyebrow">Ways to work together</p>
           <h2 class="section-title" id="services-title">
-            Flexible entry points, not commodity packages.
+            Four ways to get unstuck - pick the shape that fits this quarter.
           </h2>
           <p class="section-lead">
-            Engagements can start as advisory, implementation, rescue work, AI
-            workflow design, or product development. The shape follows the
-            problem.
+            Each engagement is sized to do one specific thing well. Start with
+            the smallest one that creates clarity; the rest follows from what
+            we learn.
           </p>
         </div>
 
+        <ul class="services-meta" aria-label="Engagement format and availability">
+          <li>Audits run 1–2 weeks</li>
+          <li>Builds typically 4–12 weeks</li>
+          <li>Most engagements kick off within 2–3 weeks of the first call</li>
+        </ul>
+
         <div class="service-grid">
-          <article class="service-item">
+          <article class="card card--pad card--proof service-card">
+            <p class="service-card__format">2-week audit</p>
             <h3>AI workflow audit</h3>
-            <p>Assess whether AI belongs in the process, where it creates value, and how to evaluate it.</p>
+            <p class="service-card__outcome">
+              In two weeks you know whether, where, and how AI fits your process
+              - and what shipping it would actually cost.
+            </p>
+            <p class="service-card__fit">
+              <span>Best for</span> teams considering AI without a clear
+              hypothesis of where it creates value, or an AI feature stuck in
+              proof-of-concept.
+            </p>
+            <p class="service-card__list-label">You get</p>
+            <ul class="signal-list service-card__list">
+              <li>Process map with candidate AI insertion points</li>
+              <li>Per-step feasibility, risk, and quality-evaluation strategy</li>
+              <li>Cost estimate covering inference, build, and run</li>
+              <li>Go / no-go recommendation with a scoped next phase</li>
+            </ul>
+            <div class="service-card__footer">
+              <a class="service-card__related" href="/blog/llm-workflow-e2e-tests/">
+                Related: LLM workflow for E2E tests
+              </a>
+              <a
+                class="button button--primary"
+                href="mailto:michal.gacek@tiptopdesign.pl?subject=AI%20workflow%20audit"
+              >
+                Start with an audit
+              </a>
+            </div>
           </article>
-          <article class="service-item">
+
+          <article class="card card--pad card--proof service-card">
+            <p class="service-card__format">1-week review</p>
             <h3>Technical architecture review</h3>
-            <p>Review product architecture, delivery risks, boundaries, and realistic next steps.</p>
+            <p class="service-card__outcome">
+              You walk away knowing where the architecture will break, what to
+              fix first, and what is actually fine to leave alone.
+            </p>
+            <p class="service-card__fit">
+              <span>Best for</span> pre-investment due diligence, post-MVP
+              reality checks, or onboarding a new technical lead.
+            </p>
+            <p class="service-card__list-label">You get</p>
+            <ul class="signal-list service-card__list">
+              <li>Written architecture review of boundaries, data flows, and integration risks</li>
+              <li>Prioritized risk register - what blocks scale versus what is safe to ignore</li>
+              <li>90-day stabilization plan</li>
+              <li>Reference architecture for the next 6–12 months</li>
+            </ul>
+            <div class="service-card__footer">
+              <a class="service-card__related" href="/blog/cpq-and-eav-model/">
+                Related: How architecture shapes what is buildable
+              </a>
+              <a
+                class="button button--primary"
+                href="mailto:michal.gacek@tiptopdesign.pl?subject=Architecture%20review"
+              >
+                Book a review
+              </a>
+            </div>
           </article>
-          <article class="service-item">
+
+          <article class="card card--pad card--proof service-card">
+            <p class="service-card__format">4–12 week build</p>
             <h3>Prototype to production</h3>
-            <p>Turn a validated idea into a maintainable full-stack system ready for real users.</p>
+            <p class="service-card__outcome">
+              A validated demo becomes a system real users can rely on - and
+              that your team can keep extending after I leave.
+            </p>
+            <p class="service-card__fit">
+              <span>Best for</span> founders with a working AI or product demo
+              and no production path, and teams that need senior full-stack
+              capacity to cross the gap.
+            </p>
+            <p class="service-card__list-label">You get</p>
+            <ul class="signal-list service-card__list">
+              <li>Production architecture covering data, services, deployment, and observability</li>
+              <li>Full-stack implementation in your stack, shipped to real users</li>
+              <li>Test and evaluation harness, including AI behavior where relevant</li>
+              <li>Handoff documentation and a maintenance runbook</li>
+            </ul>
+            <div class="service-card__footer">
+              <a class="service-card__related" href="/blog/redis-in-practice-hono-typescript/">
+                Related: Real caching architecture under production load
+              </a>
+              <a
+                class="button button--primary"
+                href="mailto:michal.gacek@tiptopdesign.pl?subject=Prototype%20to%20production"
+              >
+                Discuss the build
+              </a>
+            </div>
           </article>
-          <article class="service-item">
+
+          <article class="card card--pad card--proof service-card">
+            <p class="service-card__format">Starts with a 2-week diagnostic</p>
             <h3>Full-stack product rescue</h3>
-            <p>Stabilize a stuck project, reduce uncertainty, and create a practical delivery path.</p>
+            <p class="service-card__outcome">
+              A stuck project gets a clear path forward - and a senior pair of
+              hands who can execute it alongside your team.
+            </p>
+            <p class="service-card__fit">
+              <span>Best for</span> inherited codebases, stalled rewrites, or
+              projects where the original team left or burned out.
+            </p>
+            <p class="service-card__list-label">You get</p>
+            <ul class="signal-list service-card__list">
+              <li>Diagnostic of where delivery is actually blocked - technical, process, or scope</li>
+              <li>Triage plan with the next three unblockers, ranked</li>
+              <li>Hands-on implementation to ship the next milestone</li>
+              <li>Optional ongoing senior capacity once the project is moving again</li>
+            </ul>
+            <div class="service-card__footer">
+              <a class="service-card__related" href="/blog/end-of-fast-coding/">
+                Related: Why senior judgment matters when things get hard
+              </a>
+              <a
+                class="button button--primary"
+                href="mailto:michal.gacek@tiptopdesign.pl?subject=Product%20rescue"
+              >
+                Tell me what is stuck
+              </a>
+            </div>
           </article>
         </div>
+
+        <aside class="services-cta card card--interactive" aria-labelledby="services-cta-title">
+          <div class="services-cta__copy">
+            <p class="eyebrow">Not sure which one fits?</p>
+            <h3 id="services-cta-title">Describe the problem in two sentences.</h3>
+            <p>
+              You will get a written response within 24 hours - no pitch, just
+              whether and how I can help.
+            </p>
+          </div>
+          <div class="services-cta__actions">
+            <a
+              class="button button--primary"
+              href="mailto:michal.gacek@tiptopdesign.pl?subject=Project%20problem"
+            >
+              Email me the problem
+            </a>
+            <a
+              class="button button--secondary"
+              href="https://calendly.com/michal-gacek-tiptopdesign/30min"
+              target="_blank"
+              rel="noopener"
+            >
+              Book a 30-min scoping call
+            </a>
+          </div>
+        </aside>
       </section>
+
+      {
+        testimonials.length > 0 && (
+          <section class="home-section testimonials-section" aria-labelledby="testimonials-title">
+            <div class="section-header">
+              <p class="eyebrow">What clients say</p>
+              <h2 class="section-title" id="testimonials-title">
+                Senior judgment, in their words.
+              </h2>
+            </div>
+            <div class="testimonial-grid">
+              {testimonials.map((testimonial) => (
+                <figure class="card card--pad testimonial-card">
+                  <blockquote>{testimonial.quote}</blockquote>
+                  <figcaption>
+                    <strong>{testimonial.name}</strong>
+                    <span>{testimonial.role}</span>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
+          </section>
+        )
+      }
 
       <section class="home-section proof-section" aria-labelledby="proof-title">
         <div class="section-header">
@@ -341,6 +522,83 @@ const homeStructuredData = [
     scroll-margin-top: 6rem;
   }
 
+  .trust-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4) var(--space-8);
+    align-items: center;
+    padding: var(--space-6) 0;
+    border-top: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .trust-strip__label {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .trust-strip__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-6);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .trust-strip__list li {
+    color: var(--color-graphite);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  .testimonial-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-4);
+  }
+
+  .testimonial-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .testimonial-card blockquote {
+    margin: 0;
+    color: var(--color-ink);
+    font-size: 1.05rem;
+    line-height: var(--leading-relaxed);
+  }
+
+  .testimonial-card blockquote::before {
+    content: "\201C";
+    margin-right: 0.1rem;
+    color: var(--color-teal);
+    font-weight: 700;
+  }
+
+  .testimonial-card figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-top: auto;
+  }
+
+  .testimonial-card figcaption strong {
+    color: var(--color-ink);
+  }
+
+  .testimonial-card figcaption span {
+    color: var(--color-muted);
+    font-size: 0.86rem;
+  }
+
   .fit-grid,
   .service-grid,
   .proof-grid {
@@ -416,13 +674,184 @@ const homeStructuredData = [
     line-height: var(--leading-normal);
   }
 
-  .service-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .services-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
   }
 
-  .service-item {
-    padding: var(--space-6) 0;
+  .services-section .section-header {
+    margin-bottom: 0;
+  }
+
+  .services-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-8);
+    margin: 0;
+    padding: var(--space-3) 0;
     border-top: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+    list-style: none;
+    color: var(--color-muted);
+    font-size: 0.82rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .services-meta li {
+    position: relative;
+    padding-left: 1rem;
+  }
+
+  .services-meta li::before {
+    content: "";
+    position: absolute;
+    top: 0.62em;
+    left: 0;
+    width: 0.32rem;
+    height: 0.32rem;
+    border-radius: 50%;
+    background: var(--color-teal);
+  }
+
+  .service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6);
+  }
+
+  .service-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .service-card h3 {
+    margin: 0;
+    font-size: 1.35rem;
+    line-height: var(--leading-tight);
+  }
+
+  .service-card__format {
+    display: inline-flex;
+    align-self: flex-start;
+    margin: 0;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(var(--rgb-teal), 0.12);
+    color: var(--color-teal);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .service-card__outcome {
+    margin: 0;
+    color: var(--color-ink);
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: var(--leading-normal);
+  }
+
+  .service-card__fit {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border-left: 3px solid rgba(var(--rgb-blue), 0.28);
+    background: rgba(var(--rgb-canvas), 0.7);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--color-graphite);
+    font-size: 0.9rem;
+    line-height: var(--leading-normal);
+  }
+
+  .service-card__fit span {
+    margin-right: 0.35rem;
+    color: var(--color-blue-deep);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+  }
+
+  .service-card__list-label {
+    margin: var(--space-2) 0 calc(-1 * var(--space-2));
+    color: var(--color-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .service-card__list {
+    margin-top: var(--space-3);
+  }
+
+  .service-card__list li {
+    color: var(--color-graphite);
+    font-size: 0.94rem;
+  }
+
+  .service-card__footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: auto;
+    padding-top: var(--space-5, 1.25rem);
+    border-top: 1px solid var(--color-line);
+  }
+
+  .service-card__related {
+    color: var(--color-blue);
+    font-size: 0.86rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .service-card__related::before {
+    content: "→ ";
+    color: var(--color-teal);
+  }
+
+  .service-card__related:hover {
+    color: var(--color-blue-deep);
+    text-decoration: underline;
+  }
+
+  .service-card__footer .button {
+    align-self: flex-start;
+  }
+
+  .services-cta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-8);
+    align-items: center;
+    padding: var(--space-8);
+    background:
+      linear-gradient(135deg, rgba(var(--rgb-blue), 0.08), rgba(var(--rgb-paper), 0.94) 50%),
+      var(--color-paper);
+  }
+
+  .services-cta__copy h3 {
+    margin: var(--space-2) 0 var(--space-3);
+    font-size: 1.4rem;
+    line-height: var(--leading-tight);
+  }
+
+  .services-cta__copy p {
+    margin: 0;
+    max-width: 52ch;
+    color: var(--color-graphite);
+    font-size: 0.98rem;
+    line-height: var(--leading-normal);
+  }
+
+  .services-cta__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
   }
 
   .proof-card {
@@ -467,7 +896,8 @@ const homeStructuredData = [
     }
 
     .home-hero,
-    .lab-strip {
+    .lab-strip,
+    .services-cta {
       grid-template-columns: 1fr;
       min-height: 0;
     }
@@ -494,8 +924,14 @@ const homeStructuredData = [
       grid-template-columns: 1fr;
     }
 
-    .lab-strip {
+    .lab-strip,
+    .services-cta {
       padding: var(--space-5, 1.25rem);
+    }
+
+    .services-meta {
+      padding: var(--space-3) var(--space-4);
+      font-size: 0.82rem;
     }
   }
 </style>

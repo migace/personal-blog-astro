@@ -1,12 +1,12 @@
 ---
 title: "Redis in Practice: A Case Study with Hono and TypeScript"
-description: "A practical case study of using Redis in a small Hono + TypeScript API — caching, counters, rate limiting, and short-lived state. Patterns that solve real backend problems, not abstract SET foo bar tutorials."
+description: "A practical case study of using Redis in a small Hono + TypeScript API - caching, counters, rate limiting, and short-lived state. Patterns that solve real backend problems, not abstract SET foo bar tutorials."
 pubDate: "May 9 2026"
 heroImage: "/redis-case-study.webp"
 heroAlt: "Redis case study diagram showing cache, counters, rate limiting, and short-lived backend state"
 heroWidth: 1400
 heroHeight: 600
-tags: ["Redis", "TypeScript", "Hono", "Backend"]
+tags: ["Backend", "TypeScript"]
 ---
 
 import CacheAsidePlaygroundIsland from "../../components/CacheAsidePlayground/CacheAsidePlaygroundIsland.astro";
@@ -91,7 +91,7 @@ These are very common places where Redis fits perfectly.
 
 ## What Are We Going to Build?
 
-Everything below — the routes, the cache service, the rate limiter, the import-status flow — is implemented end-to-end in the companion repository: [github.com/migace/hono-redis-case-study](https://github.com/migace/hono-redis-case-study).
+Everything below - the routes, the cache service, the rate limiter, the import-status flow - is implemented end-to-end in the companion repository: [github.com/migace/hono-redis-case-study](https://github.com/migace/hono-redis-case-study).
 
 Our API will have several endpoints:
 
@@ -253,7 +253,7 @@ This is a simple but very practical example of using Redis in an API.
 
 ## Interactive Cache-Aside Playground
 
-Below is a small simulation of the same flow. It runs entirely in your browser — no backend, no real Redis. The "DB" is intentionally slow (~400&nbsp;ms), Redis is instant. Hit the endpoint a few times and watch the TTL count down.
+Below is a small simulation of the same flow. It runs entirely in your browser - no backend, no real Redis. The "DB" is intentionally slow (~400&nbsp;ms), Redis is instant. Hit the endpoint a few times and watch the TTL count down.
 
 <CacheAsidePlaygroundIsland />
 
@@ -558,7 +558,7 @@ Redis is an infrastructure detail. It should not dominate business logic.
 
 ## When Should You Use Redis?
 
-Redis is worth considering when you have one of these situations on your hands — and even more so when you can map it to a concrete example from your own product.
+Redis is worth considering when you have one of these situations on your hands - and even more so when you can map it to a concrete example from your own product.
 
 <div class="redis-when">
   <div class="redis-when__col">
@@ -773,7 +773,7 @@ The most important question is:
 
 > What problem am I trying to solve, and is Redis the right tool for it?
 
-If the answer is: fast access, short-lived state, counter, limit, or cache — Redis will often be a good choice.
+If the answer is: fast access, short-lived state, counter, limit, or cache - Redis will often be a good choice.
 
 ---
 
@@ -787,6 +787,6 @@ Or maybe you once forgot about TTL and spent half a day debugging stale data?
 
 I would be happy to hear about your experience.
 
-If you are interested in topics around TypeScript, backend/frontend architecture, AI-assisted development, and practical product engineering, follow me on LinkedIn, X/Twitter, or GitHub — I will be publishing more case studies like this.
+If you are interested in topics around TypeScript, backend/frontend architecture, AI-assisted development, and practical product engineering, follow me on LinkedIn, X/Twitter, or GitHub - I will be publishing more case studies like this.
 
 Github repository: [https://github.com/migace/hono-redis-case-study](https://github.com/migace/hono-redis-case-study)

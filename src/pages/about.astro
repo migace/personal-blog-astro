@@ -3,34 +3,7 @@ import BaseHead from "../components/BaseHead.astro";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import { SITE_AUTHOR, SITE_TITLE } from "../consts";
-
-const experience = [
-  {
-    company: "Rockwell Automation",
-    role: "Industrial software",
-    text: "Reliability-focused frontend work for automation systems built with Angular and Electron.",
-  },
-  {
-    company: "Intercars",
-    role: "E-commerce platforms",
-    text: "TypeScript, React, Next.js, ChakraUI, and performance-critical product experiences.",
-  },
-  {
-    company: "Grin Gaming",
-    role: "Platform architecture",
-    text: "Principal frontend ownership across product architecture, delivery, and team execution.",
-  },
-  {
-    company: "Polette",
-    role: "Payments and quality",
-    text: "Node.js payment refactoring and practical E2E test coverage with Cypress and Puppeteer.",
-  },
-  {
-    company: "Sabre",
-    role: "Travel systems",
-    text: "Booking engine development with React, Redux, AWS deployments, and engineering discipline.",
-  },
-];
+import { experience } from "../data/experience";
 
 const aboutDescription =
   "Michał Gacek is a senior full-stack engineer and AI-focused technical partner helping teams solve business problems from concept to production.";
@@ -45,7 +18,11 @@ const personStructuredData = {
     url: new URL("/", Astro.site).toString(),
   },
   jobTitle: "Senior full-stack engineer and AI technical partner",
-  sameAs: ["https://github.com/migace", "https://twitter.com/gacek_michal"],
+  sameAs: [
+    "https://www.linkedin.com/in/migace",
+    "https://github.com/migace",
+    "https://twitter.com/gacek_michal",
+  ],
 };
 ---
 
@@ -53,7 +30,7 @@ const personStructuredData = {
 <html lang="en">
   <head>
     <BaseHead
-      title="About Michał Gacek — Tiptopdesign"
+      title="About Michał Gacek - Tiptopdesign"
       description={aboutDescription}
       structuredData={personStructuredData}
     />

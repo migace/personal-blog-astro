@@ -1,12 +1,12 @@
 ---
-title: "When to Use CPQ and the EAV Model — Lessons from Building a Prototype"
+title: "When to Use CPQ and the EAV Model - Lessons from Building a Prototype"
 description: "CPQ and EAV are two of the most debated patterns in business systems. Here is when they actually make sense, when they are overkill, and why they so often end up in the same codebase."
 pubDate: "April 20 2026"
 heroImage: "/cpq-eav-intro.webp"
 heroAlt: "CPQ and EAV model concepts shown as connected product configuration blocks"
 heroWidth: 1400
 heroHeight: 782
-tags: ["Architecture", "CPQ", "Data modeling"]
+tags: ["Architecture", "Backend"]
 ---
 
 *Why traditional domain modeling eventually stops working - and what to reach for when it does.*
@@ -31,7 +31,7 @@ This article is the high-level view. Before getting into implementation details,
 
 ---
 
-## 1. What CPQ Actually Is — and Who Needs It
+## 1. What CPQ Actually Is - and Who Needs It
 
 CPQ stands for **Configure, Price, Quote**. In practice, it is a system that supports three key stages of working with a configurable product.
 
@@ -61,7 +61,7 @@ That matters because CPQ has a real cost of entry. You are introducing a more fl
 
 ---
 
-## 2. EAV — the Most Criticized Pattern That Still Makes Sense Sometimes
+## 2. EAV - the Most Criticized Pattern That Still Makes Sense Sometimes
 
 **EAV (Entity-Attribute-Value)** is a data model where, instead of creating a separate column for every field, attribute values are stored as separate records.
 
@@ -80,7 +80,7 @@ attribute_definitions: (id, family_id, code, data_type, required, ...)
 attribute_values:      (configuration_id, attribute_id, value_text, value_number, value_bool, ...)
 ```
 
-Each configuration then contains multiple value records — one for each configured attribute.
+Each configuration then contains multiple value records - one for each configured attribute.
 
 ### Why EAV has a bad reputation
 
@@ -127,7 +127,7 @@ The real design challenge is knowing **where flexibility is essential and where 
 
 ---
 
-## 4. What This Looks Like in Practice — Fragments from the Prototype
+## 4. What This Looks Like in Practice - Fragments from the Prototype
 
 Below are a few simplified examples from the prototype built with Python 3.12, SQLAlchemy 2.x, and FastAPI.
 
@@ -161,9 +161,9 @@ class AttributeDefinition(Base):
     options: Mapped[list["AttributeOption"]] = relationship()
 ```
 
-At this level, one thing becomes clear: the product is no longer described by a fixed set of columns. Instead, it is described by metadata — a product family and a set of attribute definitions.
+At this level, one thing becomes clear: the product is no longer described by a fixed set of columns. Instead, it is described by metadata - a product family and a set of attribute definitions.
 
-### Attribute values — the core of the EAV model
+### Attribute values - the core of the EAV model
 
 ```python
 class AttributeValue(Base):
@@ -259,7 +259,7 @@ That is why the system stores both a configuration snapshot and a pricing snapsh
 
 ---
 
-## 5. What Comes Next — the Series Plan
+## 5. What Comes Next - the Series Plan
 
 This article is only the starting point. In the next posts, I want to show how to build this kind of system from scratch, step by step.
 
@@ -282,7 +282,7 @@ That matters to me because the goal of this series is not to present a polished 
 
 ## Summary
 
-CPQ makes sense when the product is not a list of SKUs, but a configuration space — and when errors in pricing or product selection carry real business cost.
+CPQ makes sense when the product is not a list of SKUs, but a configuration space - and when errors in pricing or product selection carry real business cost.
 
 EAV makes sense when the attribute set needs to evolve over time without constant schema changes and redeployments.
 
@@ -294,4 +294,4 @@ A well-designed system is not the most flexible system imaginable. It is flexibl
 
 ---
 
-*Are you struggling with modeling complex products in your system? Drop a comment below or connect with me on LinkedIn — I'd love to hear how you approach the EAV vs. relational data modeling trade-off.*
+*Are you struggling with modeling complex products in your system? Drop a comment below or connect with me on LinkedIn - I'd love to hear how you approach the EAV vs. relational data modeling trade-off.*
