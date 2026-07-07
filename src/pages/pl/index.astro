@@ -1,0 +1,10 @@
+---
+export const prerender = true;
+import { getCollection } from "astro:content";
+import HomePage from "../../components/pages/HomePage.astro";
+import { filterByLang } from "../../utils/posts";
+
+const posts = filterByLang(await getCollection("blog"), "pl");
+---
+
+<HomePage lang="pl" posts={posts} />

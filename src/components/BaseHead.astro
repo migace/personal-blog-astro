@@ -2,7 +2,10 @@
 // Import the global.css file here so that it is included on
 // all pages through the use of the <BaseHead /> component.
 import "../styles/global.css";
+import Analytics from "@vercel/analytics/astro";
 import { SITE_AUTHOR } from "../consts";
+import { LOCALES, localizePath, getLocaleMeta, defaultLang } from "../i18n/utils";
+import type { Lang } from "../i18n/ui";
 
 interface Props {
   title: string;
@@ -14,6 +17,10 @@ interface Props {
   updatedTime?: Date | string;
   tags?: string[];
   structuredData?: Record<string, unknown> | Record<string, unknown>[];
+  lang?: Lang;
+  // Optional per-language path overrides for hreflang alternates. When omitted,
+  // alternates are derived from the current path for every locale.
+  alternates?: Partial<Record<Lang, string>>;
 }
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
@@ -21,27 +28,40 @@ const canonicalURL = new URL(Astro.url.pathname, Astro.site);
 const {
   title,
   description,
-  image = "/blog-placeholder-1.webp",
+  image = "/og-default.png",
   imageAlt,
   type = "website",
   publishedTime,
   updatedTime,
   tags = [],
   structuredData,
+  lang = "en",
+  alternates,
 } = Astro.props;
 
 const absoluteImageURL = new URL(image, Astro.site);
+
+const { ogLocale } = getLocaleMeta(lang);
+type AltLink = { hreflang: Lang; href: string };
+// When a page passes explicit alternates, trust them exclusively - a locale
+// missing from the map means "no translation exists", and deriving a URL from
+// the current path would emit hreflang links to 404s. The derive-from-path
+// fallback only applies to pages that share the same path in every locale.
+const altLinks: AltLink[] = LOCALES.flatMap((locale) => {
+  const path = alternates
+    ? alternates[locale]
+    : localizePath(Astro.url.pathname, locale);
+  return path ? [{ hreflang: locale, href: new URL(path, Astro.site).toString() }] : [];
+});
+const defaultAlt = altLinks.find((l) => l.hreflang === defaultLang) ?? altLinks[0];
+const altOgLocales = LOCALES.filter((l) => l !== lang).map(
+  (l) => getLocaleMeta(l).ogLocale
+);
 const schemas = structuredData
   ? Array.isArray(structuredData)
     ? structuredData
     : [structuredData]
   : [];
-
-declare global {
-  interface Window {
-    dataLayer: any[];
-  }
-}
 ---
 
 <!-- Global Metadata -->
@@ -50,27 +70,57 @@ declare global {
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <meta name="generator" content={Astro.generator} />
 <meta name="author" content={SITE_AUTHOR} />
-<meta name="theme-color" content="#ffffff" />
-<link rel="alternate" type="application/rss+xml" title="Tiptopdesign RSS" href="/rss.xml" />
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f8f7" />
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b1020" />
+
+<!-- Resolve the color theme before first paint to avoid a flash. The stored
+     user choice wins over the system preference; tokens.css keys off
+     [data-theme] and falls back to prefers-color-scheme when JS is off. -->
+<script is:inline>
+  (() => {
+    try {
+      const stored = localStorage.getItem("theme");
+      const theme =
+        stored === "dark" || stored === "light"
+          ? stored
+          : window.matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+      document.documentElement.dataset.theme = theme;
+    } catch {
+      /* leave the media-query fallback in charge */
+    }
+  })();
+</script>
+<link
+  rel="alternate"
+  type="application/rss+xml"
+  title={lang === "pl" ? "Tiptopdesign RSS (PL)" : "Tiptopdesign RSS"}
+  href={localizePath("/rss.xml", lang)}
+/>
 
 <!-- Font preloads -->
 <link
   rel="preload"
-  href="/fonts/atkinson-regular.woff"
+  href="/fonts/atkinson-regular.woff2"
   as="font"
-  type="font/woff"
+  type="font/woff2"
   crossorigin
 />
 <link
   rel="preload"
-  href="/fonts/atkinson-bold.woff"
+  href="/fonts/atkinson-bold.woff2"
   as="font"
-  type="font/woff"
+  type="font/woff2"
   crossorigin
 />
 
 <!-- Canonical URL -->
 <link rel="canonical" href={canonicalURL} />
+
+<!-- Language alternates -->
+{altLinks.map((l) => <link rel="alternate" hreflang={l.hreflang} href={l.href} />)}
+{defaultAlt && <link rel="alternate" hreflang="x-default" href={defaultAlt.href} />}
 
 <!-- Primary Meta Tags -->
 <title>{title}</title>
@@ -83,7 +133,14 @@ declare global {
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
 <meta property="og:image" content={absoluteImageURL} />
+<!-- All OG images (og-default.png and public/og/*.jpg) are exported at
+     1200x630; explicit dimensions let scrapers render the preview without
+     fetching the file first. -->
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
 {imageAlt && <meta property="og:image:alt" content={imageAlt} />}
+<meta property="og:locale" content={ogLocale} />
+{altOgLocales.map((l) => <meta property="og:locale:alternate" content={l} />)}
 {
   type === "article" && (
     <>
@@ -117,14 +174,5 @@ declare global {
   ))
 }
 
-<!-- Google tag (gtag.js) -->
-<script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-NHQL2TX44G"
-></script>
-<script is:inline>
-  window.dataLayer = window.dataLayer || [];
-  window.gtag = function () {
-    window.dataLayer.push(arguments);
-  };
-  window.gtag("js", new Date());
-  window.gtag("config", "G-NHQL2TX44G");
-</script>
+<!-- Vercel Web Analytics (cookieless, no consent banner needed) -->
+<Analytics />

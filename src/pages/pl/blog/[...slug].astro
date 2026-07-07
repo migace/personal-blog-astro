@@ -1,0 +1,31 @@
+---
+export const prerender = true;
+
+import { getCollection, render } from "astro:content";
+import BlogPost from "../../../layouts/BlogPost.astro";
+import { buildPostStaticPaths, type PostPageProps } from "../../../utils/posts";
+
+export async function getStaticPaths() {
+  const posts = await getCollection("blog");
+  return buildPostStaticPaths(posts, "pl");
+}
+
+type Props = PostPageProps;
+
+const { post, prevPost, nextPost, relatedPosts, readingTime, alternates, langHrefs, ogImage } =
+  Astro.props;
+const { Content } = await render(post);
+---
+
+<BlogPost
+  {...post.data}
+  prevPost={prevPost}
+  nextPost={nextPost}
+  relatedPosts={relatedPosts}
+  readingTime={readingTime}
+  alternates={alternates}
+  langHrefs={langHrefs}
+  ogImage={ogImage}
+>
+  <Content />
+</BlogPost>

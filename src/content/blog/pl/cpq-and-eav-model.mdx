@@ -1,0 +1,296 @@
+---
+title: "Kiedy używać CPQ i modelu EAV - wnioski z budowy prototypu"
+description: "CPQ i EAV to dwa z najgoręcej dyskutowanych wzorców w systemach biznesowych. Oto kiedy naprawdę mają sens, kiedy są przerostem formy nad treścią i dlaczego tak często lądują w tej samej bazie kodu."
+pubDate: "April 20 2026"
+heroImage: "../../../assets/heroes/cpq-eav-intro.webp"
+heroAlt: "Koncepcje modelu CPQ i EAV pokazane jako połączone bloki konfiguracji produktu"
+tags: ["Architecture", "Backend"]
+lang: "pl"
+---
+
+*Dlaczego tradycyjne modelowanie domeny w pewnym momencie przestaje działać - i po co sięgać, kiedy już do tego dojdzie.*
+
+---
+
+W pewnym momencie tradycyjne modelowanie domeny przestaje działać.
+
+Dodajesz kolumnę za kolumną. Schema robi się coraz trudniejsza do ogarnięcia. Różne rodziny produktów przestają pasować do jednej, wspólnej struktury. Każda nowa funkcja to kolejna migracja, kolejny warunek w backendzie i kolejny zahardkodowany formularz we frontendzie.
+
+To zwykle moment, w którym system przestaje zachowywać się jak zwykły katalog i zaczyna zachowywać się jak problem konfiguracyjny.
+
+Przez ostatnie kilka miesięcy budowałem prototyp CPQ (Configure-Price-Quote) dla branży HVAC - konkretnie dla konfigurowalnych klap przeciwpożarowych. Projekt okazał się dobrą okazją, żeby zrobić krok wstecz i uporządkować temat, który ciągle wraca w systemach biznesowych: kiedy tradycyjne modelowanie domeny już nie wystarcza i trzeba sięgnąć po CPQ i EAV - a kiedy byłby to po prostu zbędny overengineering.
+
+To pierwszy artykuł z planowanej serii. W kolejnych częściach pokażę, jak przejść od pustego repozytorium do działającego systemu zbudowanego na Turborepo, FastAPI, SQLAlchemy 2.x i React/TypeScript - z walidacją reguł biznesowych, silnikiem wyceny, snapshotami ofert i warstwą AI opartą na tool callingu.
+
+Ten artykuł to widok z lotu ptaka. Zanim wejdę w szczegóły implementacji, chcę odpowiedzieć na trzy pytania:
+
+- Czym tak naprawdę jest CPQ?
+- Kiedy model EAV ma sens?
+- Dlaczego te dwa podejścia tak często pojawiają się w tym samym systemie?
+
+---
+
+## 1. Czym naprawdę jest CPQ - i kto go potrzebuje
+
+CPQ to skrót od **Configure, Price, Quote**. W praktyce jest to system wspierający trzy kluczowe etapy pracy z konfigurowalnym produktem.
+
+**Configure** to umożliwienie klientowi lub handlowcowi złożenia poprawnego produktu z zestawu atrybutów, opcji i ograniczeń.
+
+**Price** to obliczenie ceny końcowej na podstawie reguł takich jak ceny bazowe, dopłaty, marże, rabaty, ustalenia handlowe czy kursy walut.
+
+**Quote** to wygenerowanie oferty jako niezmiennego snapshotu konfiguracji i wyceny w konkretnym momencie - z numerem oferty, datą ważności i dokumentem gotowym do wysłania.
+
+Najprościej ująć to tak: CPQ staje się przydatny wtedy, gdy nie sprzedajesz już ustalonego produktu, tylko przestrzeń możliwych konfiguracji.
+
+### Kiedy CPQ ma sens
+
+CPQ się opłaca, gdy produkt nie jest pojedynczym SKU, lecz uporządkowanym zbiorem wyborów i ograniczeń. Typowe przykłady to produkcja przemysłowa na zamówienie, wycena enterprise'owego SaaS, produkty ubezpieczeniowe oraz procesy sprzedaży B2B z długimi cyklami ofertowania.
+
+To sytuacje, w których zespoły sprzedażowe często lądują w arkuszach kalkulacyjnych, w których liczba możliwych kombinacji jest zbyt duża, by ogarnąć ją ręcznie, i w których błędy w wycenie uderzają wprost w marżę albo w wykonalność dostawy.
+
+W takich systemach prawdziwa wartość często nie leży w samym obliczaniu ceny. Leży w **poprawności konfiguracji**. Jeśli użytkownicy mogą łączyć dziesiątki opcji, a część tych kombinacji jest niepoprawna, to konfigurator przestaje być dodatkiem dla wygody i staje się kluczową funkcją biznesową.
+
+### Kiedy CPQ to przerost formy
+
+Nie każdy biznes potrzebuje CPQ. W wielu przypadkach byłoby to zbyt ciężkie rozwiązanie.
+
+Jeśli twój katalog ma kilkadziesiąt albo nawet kilkaset produktów, rzadko się zmienia, a każdy produkt ma tylko jedną lub dwie proste opcje, to standardowy model relacyjny zwykle w zupełności wystarcza. Tak samo jest, gdy proces sprzedaży wciąż jest w pełni manualny, a koszt błędu niski.
+
+To istotne, bo CPQ ma realny koszt wejścia. Wprowadzasz bardziej elastyczny model danych, walidację reguł, interfejs konfiguratora, złożoność testów i wersjonowanie ofert. Ta złożoność musi na siebie zarobić.
+
+---
+
+## 2. EAV - najbardziej krytykowany wzorzec, który mimo wszystko czasem ma sens
+
+**EAV (Entity-Attribute-Value)** to model danych, w którym zamiast tworzyć osobną kolumnę dla każdego pola, wartości atrybutów przechowuje się jako osobne rekordy.
+
+Zamiast tabeli takiej jak ta:
+
+```
+products(id, width_mm, height_mm, fire_class, actuator_type, ...)
+```
+
+dostajesz strukturę opartą na definicjach atrybutów i wartościach atrybutów.
+
+Na przykład:
+
+```
+attribute_definitions: (id, family_id, code, data_type, required, ...)
+attribute_values:      (configuration_id, attribute_id, value_text, value_number, value_bool, ...)
+```
+
+Każda konfiguracja zawiera wtedy wiele rekordów wartości - po jednym dla każdego skonfigurowanego atrybutu.
+
+### Dlaczego EAV ma złą reputację
+
+Krytyka EAV często jest uzasadniona.
+
+Query robią się bardziej złożone. Typowanie słabnie. Ograniczenia trudniej wyrazić w czysty sposób na poziomie bazy. ORM-y nie mapują takiej struktury w naturalny sposób. Zamiast zrzucić część roboty na schemę, więcej odpowiedzialności przenosisz do kodu aplikacji.
+
+Jeśli twoje atrybuty są stabilne, znane z góry i raczej się nie zmieniają, EAV jest zwykle złym wyborem. Zwykłe kolumny będą wtedy prostsze, szybsze i łatwiejsze do optymalizacji.
+
+### Kiedy EAV faktycznie pasuje
+
+EAV zaczyna mieć sens, gdy jednocześnie spełnione są trzy warunki.
+
+Po pierwsze, zbiór atrybutów nie jest ustalony i musi ewoluować przez całe życie systemu.
+
+Po drugie, różne rodziny produktów lub typy encji mają zasadniczo różne zestawy pól.
+
+Po trzecie, biznes potrzebuje możliwości dodawania nowych atrybutów bez czekania na migracje bazy i deploye aplikacji.
+
+To częste w systemach takich jak wielorodzinowe platformy CPQ, dynamiczne formularze, CRM-y z polami niestandardowymi czy złożone katalogi produktów, w których metadane sterują częścią zachowania.
+
+W uproszczeniu zasada brzmi tak:
+
+> Jeśli atrybuty są stabilne, używaj zwykłych kolumn.
+> Jeśli atrybuty są dynamiczne i muszą ewoluować niezależnie od deployów, rozważ EAV.
+
+---
+
+## 3. Dlaczego CPQ i EAV naturalnie się spotykają
+
+Tu robi się ciekawie.
+
+Systemy CPQ z definicji muszą wspierać konfigurowalne rodziny produktów. Te rodziny często różnią się geometrią, dostępnymi opcjami, dozwolonymi wartościami i regułami walidacji. Gdyby każda nowa rodzina wymagała zmian w schemie, nowych warunków w backendzie i nowych zahardkodowanych formularzy we frontendzie, system szybko straciłby tę elastyczność, którą CPQ ma przecież zapewniać.
+
+Dlatego dobrze zaprojektowane systemy CPQ często opierają się na **modelu hybrydowym**.
+
+Stabilne i krytyczne części systemu pozostają relacyjne: rodziny produktów, reguły wyceny, rekordy ofert, workflowy i inne kluczowe encje.
+
+Elastyczną część obsługują metadane i EAV: definicje atrybutów, dozwolone opcje oraz wartości wybrane w konkretnej konfiguracji.
+
+To nie znaczy „wrzuć wszystko do EAV". To zwykle najszybszy sposób na system, który jest trudniejszy do zrozumienia, trudniejszy do odpytywania i trudniejszy w utrzymaniu.
+
+Prawdziwym wyzwaniem projektowym jest wyczucie, **gdzie elastyczność jest niezbędna, a gdzie nie**.
+
+---
+
+## 4. Jak to wygląda w praktyce - fragmenty z prototypu
+
+Poniżej kilka uproszczonych przykładów z prototypu zbudowanego na Pythonie 3.12, SQLAlchemy 2.x i FastAPI.
+
+### Rodzina produktu i definicje atrybutów
+
+```python
+class ProductFamily(Base):
+    __tablename__ = "product_families"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    code: Mapped[str] = mapped_column(unique=True)  # np. "FD-RECT"
+    name: Mapped[str]
+
+    attributes: Mapped[list["AttributeDefinition"]] = relationship(
+        back_populates="family"
+    )
+
+
+class AttributeDefinition(Base):
+    __tablename__ = "attribute_definitions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    family_id: Mapped[int] = mapped_column(ForeignKey("product_families.id"))
+    code: Mapped[str]  # np. "width_mm"
+    data_type: Mapped[AttributeType]  # ENUM | NUMBER | BOOL | TEXT
+    required: Mapped[bool] = mapped_column(default=False)
+    min_value: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+    max_value: Mapped[Decimal | None] = mapped_column(Numeric, nullable=True)
+
+    family: Mapped["ProductFamily"] = relationship(back_populates="attributes")
+    options: Mapped[list["AttributeOption"]] = relationship()
+```
+
+Na tym poziomie jedno staje się jasne: produkt nie jest już opisany ustalonym zestawem kolumn. Opisują go metadane - rodzina produktu i zestaw definicji atrybutów.
+
+### Wartości atrybutów - serce modelu EAV
+
+```python
+class AttributeValue(Base):
+    __tablename__ = "attribute_values"
+
+    configuration_id: Mapped[int] = mapped_column(
+        ForeignKey("product_configurations.id"),
+        primary_key=True,
+    )
+    attribute_id: Mapped[int] = mapped_column(
+        ForeignKey("attribute_definitions.id"),
+        primary_key=True,
+    )
+
+    value_text: Mapped[str | None]
+    value_number: Mapped[Decimal | None] = mapped_column(Numeric)
+    value_bool: Mapped[bool | None]
+    option_id: Mapped[int | None] = mapped_column(
+        ForeignKey("attribute_options.id")
+    )
+```
+
+Warto zauważyć jeden szczegół: nie ma tu pojedynczej kolumny `value`. Wartości są rozdzielone według typu, a aplikacja korzysta z `data_type` z definicji atrybutu, żeby ustalić, które pole odczytać.
+
+To nie eliminuje wszystkich wad EAV, ale pomaga zachować przynajmniej trochę dyscypliny typów - i na poziomie bazy, i aplikacji.
+
+### Walidacja konfiguracji
+
+```python
+def validate_configuration(
+    cfg: ConfigurationDraft,
+    family: ProductFamily,
+) -> list[ValidationError]:
+    errors: list[ValidationError] = []
+    defs_by_code = {a.code: a for a in family.attributes}
+
+    for attr_def in family.attributes:
+        if attr_def.required and attr_def.code not in cfg.values:
+            errors.append(ValidationError(attr_def.code, "required"))
+
+    for code, value in cfg.values.items():
+        attr_def = defs_by_code.get(code)
+        if attr_def is None:
+            errors.append(ValidationError(code, "unknown_attribute"))
+            continue
+
+        errors.extend(_check_type_and_range(attr_def, value))
+
+    errors.extend(_apply_business_rules(cfg, family))
+    # np. "jeśli width > 1000, nie można użyć siłownika X"
+
+    return errors
+```
+
+To moment, w którym sama schema przestaje wystarczać. Potrzebujesz warstwy walidacji, która sprawdza wymagane pola, wymusza typy, weryfikuje zakresy i stosuje reguły zależne od kombinacji atrybutów.
+
+W praktyce to właśnie tutaj CPQ zaczyna udowadniać swoją wartość.
+
+### Endpoint wyceny
+
+```python
+@router.post("/configurations/{cfg_id}/price", response_model=PriceBreakdown)
+def price_configuration(
+    cfg_id: int,
+    svc: PricingService = Depends(get_pricing_service),
+) -> PriceBreakdown:
+    return svc.price(cfg_id)
+```
+
+Sam endpoint jest prosty. Liczy się to, co dzieje się pod nim: serwis wyceny nie zwraca pojedynczej liczby, lecz pełny rozkład ceny.
+
+To była jedna z kluczowych lekcji z budowy prototypu. W systemach ofertowych użytkownicy nie chcą wiedzieć tylko *ile*. Chcą też wiedzieć *dlaczego tyle*.
+
+### Snapshot oferty jako niezmienny zapis
+
+```python
+def create_quote(
+    cfg: ProductConfiguration,
+    breakdown: PriceBreakdown,
+) -> ProductQuote:
+    return ProductQuote(
+        number=generate_quote_number(),
+        configuration_snapshot=serialize(cfg),
+        price_snapshot=serialize(breakdown),
+        valid_until=utcnow() + timedelta(days=30),
+        created_at=utcnow(),
+    )
+```
+
+Oferty nie powinny być przeliczane od nowa za każdym razem, gdy ktoś je otworzy. Jeśli klient wróci do PDF-a po kilku miesiącach, powinien wciąż widzieć dokładnie to, co zostało wysłane lub zaakceptowane w tamtym momencie.
+
+Dlatego system przechowuje i snapshot konfiguracji, i snapshot wyceny.
+
+---
+
+## 5. Co dalej - plan serii
+
+Ten artykuł to dopiero punkt wyjścia. W kolejnych wpisach chcę pokazać, jak zbudować taki system od zera, krok po kroku.
+
+Seria z grubsza pójdzie tą ścieżką:
+
+- Konfiguracja monorepo z Turborepo, FastAPI, React/Vite, Postgresem i Docker Compose
+- Modelowanie domeny dla rodzin produktów, atrybutów, opcji i konfiguracji oraz migracje Alembic
+- API konfiguratora z dynamicznymi formularzami, walidacją i regułami biznesowymi
+- Silnik wyceny z kolejnością reguł, dopłatami, marżami i rozkładami ceny
+- Oferty jako niezmienne snapshoty, w tym numeracja, generowanie PDF i wysyłka mailem
+- Frontend konfiguratora z polami generowanymi na podstawie metadanych atrybutów
+- Doradca AI prowadzący użytkowników przez konfigurację z użyciem tool callingu
+- Ingest danych z PDF-ów, arkuszy i katalogów produktów do modelu systemu
+
+Kod będzie publiczny, a każdy artykuł skupi się na jednym konkretnym kroku tej drogi.
+
+To dla mnie ważne, bo celem tej serii nie jest pokazanie wypolerowanego demo. Chodzi o to, by pokazać, jak system wyłania się w praktyce, gdzie zapadają trudne decyzje i na które kompromisy warto pójść.
+
+---
+
+## Podsumowanie
+
+CPQ ma sens, gdy produkt nie jest listą SKU, lecz przestrzenią konfiguracji - i gdy błędy w wycenie albo doborze produktu niosą realny koszt biznesowy.
+
+EAV ma sens, gdy zbiór atrybutów musi ewoluować w czasie bez ciągłych zmian schemy i kolejnych deployów.
+
+Te dwa podejścia naturalnie spotykają się w systemach, które muszą wspierać wiele rodzin konfigurowalnych produktów, zachowując przy tym kontrolę nad regułami biznesowymi, wyceną i procesami ofertowania.
+
+Najgorsze, co możesz zrobić, to rozsmarować EAV po całym modelu na wszelki wypadek. Niewiele lepsze jest budowanie pełnej platformy CPQ dla czegoś, co w rzeczywistości jest małym katalogiem z paroma opcjami.
+
+Dobrze zaprojektowany system to nie najbardziej elastyczny system, jaki da się wyobrazić. To system elastyczny tam, gdzie trzeba, i celowo prosty tam, gdzie może być.
+
+---
+
+*Zmagasz się z modelowaniem złożonych produktów w swoim systemie? Zostaw komentarz poniżej albo odezwij się do mnie na LinkedIn - chętnie posłucham, jak podchodzisz do kompromisu między modelem EAV a relacyjnym.*

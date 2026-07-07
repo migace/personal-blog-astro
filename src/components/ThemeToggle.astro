@@ -1,0 +1,103 @@
+---
+import { useTranslations } from "../i18n/utils";
+import type { Lang } from "../i18n/ui";
+
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<button class="theme-toggle" type="button" data-theme-toggle aria-label={t("theme.toggle")}>
+  <svg
+    class="theme-toggle__icon theme-toggle__icon--moon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"></path>
+  </svg>
+  <svg
+    class="theme-toggle__icon theme-toggle__icon--sun"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="12" cy="12" r="4"></circle>
+    <path
+      d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
+    ></path>
+  </svg>
+</button>
+
+<style>
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.15rem;
+    height: 2.15rem;
+    padding: 0;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    background: rgba(var(--rgb-paper), 0.75);
+    color: var(--color-graphite);
+    cursor: pointer;
+    transition: border-color 0.18s ease, color 0.18s ease;
+  }
+
+  .theme-toggle:hover {
+    border-color: rgba(var(--rgb-accent), 0.45);
+    color: var(--color-accent-strong);
+  }
+
+  .theme-toggle__icon {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  /* BaseHead sets data-theme before paint, so the attribute is the single
+     source of truth for which icon shows. Without JS the button is inert and
+     hidden. */
+  .theme-toggle__icon--sun,
+  :global(html[data-theme="dark"]) .theme-toggle__icon--moon {
+    display: none;
+  }
+
+  :global(html[data-theme="dark"]) .theme-toggle__icon--sun {
+    display: block;
+  }
+
+  :global(html:not([data-theme])) .theme-toggle {
+    display: none;
+  }
+</style>
+
+<script>
+  function initThemeToggle() {
+    document.querySelectorAll<HTMLButtonElement>("[data-theme-toggle]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const root = document.documentElement;
+        const next = root.dataset.theme === "dark" ? "light" : "dark";
+        root.dataset.theme = next;
+        try {
+          localStorage.setItem("theme", next);
+        } catch {
+          /* private mode - the choice just won't persist */
+        }
+      });
+    });
+  }
+
+  initThemeToggle();
+</script>

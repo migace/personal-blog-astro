@@ -1,0 +1,323 @@
+---
+import BaseHead from "../BaseHead.astro";
+import Header from "../Header.astro";
+import Footer from "../Footer.astro";
+import { SITE_AUTHOR, SITE_TITLE } from "../../consts";
+import { getLocaleMeta, localizePath, servicesPath, useTranslations } from "../../i18n/utils";
+import type { Lang } from "../../i18n/ui";
+import { homePage, servicesPage } from "../../i18n/content/pages";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+const c = servicesPage[lang];
+// The engagement cards are shared with the home page section so the two
+// surfaces never drift apart.
+const s = homePage[lang].services;
+const { htmlLang } = getLocaleMeta(lang);
+
+const mailto = (subject: string) =>
+  `mailto:michal.gacek@tiptopdesign.pl?subject=${encodeURIComponent(subject)}`;
+
+const alternates: Partial<Record<Lang, string>> = {
+  en: servicesPath("en"),
+  pl: servicesPath("pl"),
+};
+
+const servicesStructuredData = s.cards.map((card) => ({
+  "@context": "https://schema.org",
+  "@type": "Service",
+  name: card.title,
+  description: card.outcome,
+  serviceType: card.title,
+  provider: {
+    "@type": "Organization",
+    name: SITE_TITLE,
+    url: new URL(localizePath("/", lang), Astro.site).toString(),
+    founder: { "@type": "Person", name: SITE_AUTHOR },
+  },
+}));
+---
+
+<!doctype html>
+<html lang={htmlLang}>
+  <head>
+    <BaseHead
+      title={c.metaTitle}
+      description={c.metaDescription}
+      structuredData={servicesStructuredData}
+      lang={lang}
+      alternates={alternates}
+    />
+  </head>
+  <body>
+    <Header lang={lang} langHrefs={alternates} />
+    <main id="main" class="services-page">
+      <section class="services-hero" aria-labelledby="services-title">
+        <p class="eyebrow">{c.hero.eyebrow}</p>
+        <h1 id="services-title">{c.hero.title}</h1>
+        <p class="section-lead">{c.hero.lead}</p>
+      </section>
+
+      <ul class="services-meta" aria-label={t("a11y.engagementMeta")}>
+        {s.meta.map((item) => <li>{item}</li>)}
+      </ul>
+
+      <div class="service-grid">
+        {
+          s.cards.map((card) => (
+            <article class="card card--pad card--proof service-card">
+              <p class="service-card__format">{card.format}</p>
+              <h2>{card.title}</h2>
+              <p class="service-card__outcome">{card.outcome}</p>
+              <p class="service-card__fit">
+                <span>{s.fitLabel}</span> {card.fit}
+              </p>
+              <p class="service-card__list-label">{s.listLabel}</p>
+              <ul class="signal-list service-card__list">
+                {card.list.map((item) => <li>{item}</li>)}
+              </ul>
+              <div class="service-card__footer">
+                <a class="service-card__related" href={localizePath(`/blog/${card.relatedSlug}/`, lang)}>
+                  {card.related}
+                </a>
+                <a class="button button--primary" href={mailto(card.mailSubject)}>
+                  {card.button}
+                </a>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+
+      <aside class="services-cta card card--interactive" aria-labelledby="services-cta-title">
+        <div class="services-cta__copy">
+          <p class="eyebrow">{s.cta.eyebrow}</p>
+          <h2 id="services-cta-title">{s.cta.title}</h2>
+          <p>{s.cta.body}</p>
+        </div>
+        <div class="services-cta__actions">
+          <a class="button button--primary" href={mailto(s.cta.mailSubject)}>
+            {s.cta.primary}
+          </a>
+          <a
+            class="button button--secondary"
+            href="https://calendly.com/michal-gacek-tiptopdesign/30min"
+            target="_blank"
+            rel="noopener"
+          >
+            {s.cta.secondary}
+          </a>
+        </div>
+      </aside>
+    </main>
+    <Footer lang={lang} />
+  </body>
+</html>
+
+<style>
+  .services-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+
+  .services-hero {
+    max-width: 920px;
+    padding: var(--space-6) 0 var(--space-2);
+  }
+
+  .services-hero h1 {
+    margin: 0;
+    font-size: clamp(2.1rem, 3.4vw, 3rem);
+  }
+
+  .services-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-8);
+    margin: 0;
+    padding: var(--space-3) 0;
+    border-top: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
+    list-style: none;
+    color: var(--color-muted);
+    font-size: 0.82rem;
+    letter-spacing: 0.01em;
+  }
+
+  .services-meta li {
+    position: relative;
+    padding-left: 1rem;
+  }
+
+  .services-meta li::before {
+    content: "";
+    position: absolute;
+    top: 0.62em;
+    left: 0;
+    width: 0.32rem;
+    height: 0.32rem;
+    border-radius: 50%;
+    background: var(--color-teal);
+  }
+
+  .service-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-6);
+  }
+
+  .service-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .service-card h2 {
+    margin: 0;
+    font-size: 1.35rem;
+    line-height: var(--leading-tight);
+  }
+
+  .service-card__format {
+    display: inline-flex;
+    align-self: flex-start;
+    margin: 0;
+    padding: 0.3rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(var(--rgb-teal), 0.12);
+    color: var(--color-teal-text);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .service-card__outcome {
+    margin: 0;
+    color: var(--color-ink);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: var(--leading-normal);
+  }
+
+  .service-card__fit {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border-left: 3px solid rgba(var(--rgb-accent), 0.28);
+    background: rgba(var(--rgb-canvas), 0.7);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: var(--color-graphite);
+    font-size: 0.9rem;
+    line-height: var(--leading-normal);
+  }
+
+  .service-card__fit span {
+    margin-right: 0.35rem;
+    color: var(--color-accent-strong);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+  }
+
+  .service-card__list-label {
+    margin: var(--space-2) 0 calc(-1 * var(--space-2));
+    color: var(--color-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .service-card__list {
+    margin-top: var(--space-3);
+  }
+
+  .service-card__list li {
+    color: var(--color-graphite);
+    font-size: 0.94rem;
+  }
+
+  .service-card__footer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: auto;
+    padding-top: var(--space-5, 1.25rem);
+    border-top: 1px solid var(--color-line);
+  }
+
+  .service-card__related {
+    color: var(--color-accent);
+    font-size: 0.86rem;
+    font-weight: 700;
+    text-decoration: none;
+  }
+
+  .service-card__related::before {
+    content: "→ ";
+    color: var(--color-teal);
+  }
+
+  .service-card__related:hover {
+    color: var(--color-accent-strong);
+    text-decoration: underline;
+  }
+
+  .service-card__footer .button {
+    align-self: flex-start;
+  }
+
+  .services-cta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-8);
+    align-items: center;
+    padding: var(--space-8);
+    background:
+      linear-gradient(135deg, rgba(var(--rgb-accent), 0.08), rgba(var(--rgb-paper), 0.94) 50%),
+      var(--color-paper);
+  }
+
+  .services-cta__copy h2 {
+    margin: var(--space-2) 0 var(--space-3);
+    font-size: 1.4rem;
+    line-height: var(--leading-tight);
+  }
+
+  .services-cta__copy p {
+    margin: 0;
+    max-width: 52ch;
+    color: var(--color-graphite);
+    font-size: 0.98rem;
+    line-height: var(--leading-normal);
+  }
+
+  .services-cta__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  @media (max-width: 920px) {
+    .services-cta {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .service-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .services-cta {
+      padding: var(--space-5, 1.25rem);
+    }
+  }
+</style>

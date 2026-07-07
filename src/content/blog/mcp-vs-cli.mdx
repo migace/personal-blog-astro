@@ -2,14 +2,13 @@
 title: "MCP Is Not Dead. Most Teams Just Haven't Learned How to Evaluate It"
 description: "A practical evaluation of MCP and CLI tooling for AI agents, covering centralization, security, observability, latency, and hybrid workflows."
 pubDate: "March 15 2026"
-heroImage: "/mcp-vs-cli.webp"
+heroImage: "../../assets/heroes/mcp-vs-cli.webp"
 heroAlt: "Diagram comparing MCP servers with command-line tool execution for AI agent workflows"
-heroWidth: 1400
-heroHeight: 588
 tags: ["AI Systems", "Developer Tools"]
 ---
 
 import Image from 'astro/components/Image.astro';
+import localVsCentralDiagram from '../../assets/heroes/local-execution-vs-centralization.webp';
 
 *Why the current backlash against MCP says more about industry hype cycles than about the real future of agent tooling.*
 
@@ -131,7 +130,7 @@ In developer culture, centralization is often treated with suspicion. But at the
 
 A centralized capability layer allows you to put complexity where it belongs: behind a managed service boundary rather than on every laptop, every runner, every ephemeral environment, and every coding agent install.
 
-<Image src="/local-execution-vs-centralization.webp" alt="Diagram comparing local CLI execution with centralized MCP service boundaries" width={1400} height={871} />
+<Image src={localVsCentralDiagram} alt="Diagram comparing local CLI execution with centralized MCP service boundaries" widths={[480, 760, 1400]} sizes="(max-width: 760px) 100vw, 700px" />
 
 That unlocks a lot:
 

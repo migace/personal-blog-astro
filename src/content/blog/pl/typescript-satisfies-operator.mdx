@@ -1,0 +1,123 @@
+---
+title: "Operator `satisfies` w TypeScript: kiedy i jak go używać"
+description: "Zobacz, jak operator satisfies w TypeScript zachowuje wnioskowanie typów literalnych przy sprawdzaniu kształtu obiektów, typów mapowanych i bezpieczniejszych obiektów konfiguracyjnych."
+pubDate: "March 13 2025"
+updatedDate: "July 6 2026"
+heroImage: "../../../assets/heroes/typescript-satisfies.webp"
+heroAlt: "Ilustracja operatora satisfies w TypeScript z ograniczeniami typowanego obiektu"
+tags: ["TypeScript", "Quality"]
+lang: "pl"
+---
+
+TypeScript ciągle się rozwija i dorzuca funkcje, które poprawiają bezpieczeństwo typów i komfort pracy. Jedną z nich jest operator `satisfies`, wprowadzony w TypeScript 4.9. Pozwala wymusić ograniczenia typu i przy okazji zachować to, co kompilator sam wywnioskował. W tym artykule sprawdzimy, co robi `satisfies`, kiedy po niego sięgać i jak poprawia bezpieczeństwo typów w Twoich projektach.
+
+---
+
+## Czym jest operator `satisfies`?
+`satisfies` sprawdza, czy wartość pasuje do wskazanego typu, a jednocześnie nie gubi informacji o tym, co kompilator wywnioskował. W przeciwieństwie do asercji `as` niczego kompilatorowi nie narzuca - wartość musi przejść prawdziwe sprawdzenie typu. Przydaje się szczególnie, gdy chcesz:
+
+- mieć pewność, że obiekt ma konkretny kształt,
+- zachować precyzyjny typ wartości, żeby wnioskowanie było dokładniejsze,
+- mieć naraz sprawdzanie typów i elastyczne wnioskowanie.
+
+### Podstawowa składnia
+```typescript
+const user = {
+  id: 1,
+  name: "Alice",
+  role: "admin",
+} satisfies { id: number; name: string; role: string };
+```
+Tutaj `user` musi spełniać podany typ, ale kompilator i tak wnioskuje go jako `{ id: number; name: string; role: "admin" }` - dzięki czemu zachowujemy dostęp do dokładniejszych typów.
+
+---
+
+## Najważniejsze zalety `satisfies`
+### 1. Zachowanie typów literalnych
+Największa zaleta `satisfies` jest taka, że zachowuje typy literalne, zamiast rozszerzać je do ogólnych.
+
+#### Przykład: bez `satisfies`
+```typescript
+const theme: { color: string; } = {
+  color: "blue",
+};
+
+const colorChoice = theme.color; // type: string (literal type lost)
+```
+Tutaj `colorChoice` ma typ `string` - konkretny typ literalny (`"blue"`) przepada.
+
+#### Przykład: z `satisfies`
+```typescript
+const theme = {
+  color: "blue",
+} satisfies { color: string };
+
+const colorChoice = theme.color; // type: "blue"
+```
+Z `satisfies` `colorChoice` trzyma swój typ literalny (`"blue"`) - a to się liczy wszędzie tam, gdzie ważne są konkretne wartości.
+
+---
+
+### 2. Wyłapywanie literówek, które `as` przepuści
+Częste nieporozumienie: `satisfies` wcale nie wyłącza sprawdzania nadmiarowych właściwości. Na literale obiektowym działa jak zwykła adnotacja - nieznana właściwość to błąd kompilacji. I właśnie to czyni go bezpieczniejszym od asercji typu.
+
+#### Przykład: `satisfies` kontra `as` na tym samym obiekcie
+```typescript
+type ButtonStyle = { borderRadius: number; color: string };
+
+const withAssertion = {
+  borderRadius: 8,
+  color: "red",
+  paddding: 10, // literówka
+} as ButtonStyle; // kompiluje się - asercja wycisza sprawdzenie
+
+const withSatisfies = {
+  borderRadius: 8,
+  color: "red",
+  paddding: 10, // literówka
+} satisfies ButtonStyle;
+// Error: Object literal may only specify known properties,
+// and 'paddding' does not exist in type 'ButtonStyle'.
+```
+Jeśli naprawdę potrzebujesz dodatkowych pól, poszerz ograniczenie (np. o sygnaturę indeksu). `satisfies` będzie pilnował dokładnie tego kształtu, który zadeklarujesz - i o tę surowość właśnie chodzi.
+
+---
+
+### 3. Lepsze wnioskowanie dla typów mapowanych
+Przy typach mapowanych `satisfies` poprawia wnioskowanie i oszczędza Ci jawnych adnotacji.
+
+#### Przykład: typ mapowany z `satisfies`
+```typescript
+type RolePermissions = {
+  admin: string[];
+  user: string[];
+};
+
+const permissions = {
+  admin: ["create", "delete"],
+  user: ["read"],
+} satisfies RolePermissions;
+
+permissions.admin.push("update"); // Allowed and properly inferred
+```
+Tablica uprawnień zostaje bezpieczna typowo i zachowuje wnioskowane wartości.
+
+---
+
+## Kiedy używać `satisfies`?
+Sięgaj po `satisfies`, gdy:
+- chcesz wymusić strukturę, ale nie tracić informacji o typach literalnych,
+- chcesz wyłapywać literówki, które asercja `as` po cichu przepuszcza,
+- pracujesz z typami mapowanymi i zależy Ci na poprawnym wnioskowaniu,
+- potrzebujesz elastycznego ograniczenia typu bez jawnego rozszerzania.
+
+Odpuść `satisfies`, gdy:
+- zwykłe adnotacje typów w zupełności wystarczają,
+- potrzebujesz ścisłego zawężania typów, a nie wnioskowania.
+
+---
+
+## Podsumowanie
+`satisfies` to praktyczne narzędzie: wymusza ograniczenia typu i nie rusza tego, co kompilator wywnioskował. Zachowuje typy literalne, wyłapuje literówki i nadmiarowe pola, które `as` by przepuścił, i poprawia wnioskowanie przy typach mapowanych - bezpieczeństwo typów dostajesz bez rezygnacji z elastyczności.
+
+Jeśli wahasz się między `satisfies` a zwykłymi adnotacjami w realnej konfiguracji albo w design systemie, [odezwij się](/contact/) - chętnie przegadam z Tobą kompromisy.

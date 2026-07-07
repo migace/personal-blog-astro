@@ -1,0 +1,518 @@
+---
+title: "Value Objects in Python: Make Invalid States Unrepresentable"
+description: "A practical, example-driven guide to value objects in Python - frozen dataclasses, self-validation, behavior over primitives, plus a checkout case study, best practices, and when not to use them."
+pubDate: "June 28 2026"
+heroImage: "../../assets/heroes/value-objects-python.webp"
+heroAlt: "Crystalline cubes representing immutable value objects for money, email, and dates locked together on a dark background"
+tags: ["Architecture", "Quality"]
+---
+
+Most Python bugs I have chased in production were not exotic. They were a `str` that should have been an email, a `float` that should have been money, two dates that were silently in the wrong order, or a dictionary passed five layers deep that lost a field somewhere along the way.
+
+The usual reaction is:
+
+> "It's just a string. It's just a number. Python is dynamic, why wrap it?"
+
+That is true right up until the moment a malformed value travels through ten functions and blows up far away from where it was created - in a billing job at 2 a.m., not in the request handler where you could have caught it.
+
+A **value object** is the small, boring pattern that prevents most of that class of bug. It is not enterprise ceremony. It is a tiny, immutable, self-validating type that represents one concept and makes invalid states impossible to construct.
+
+In this article I will build several value objects in Python, walk through a checkout case study where primitives caused a real bug, and lay out the best practices and the cases where you should *not* reach for this pattern.
+
+---
+
+## What Is a Value Object?
+
+A value object is a small type defined entirely by its **value**, not by an identity.
+
+Two value objects are equal if all their fields are equal. A `Money(10, "USD")` is interchangeable with any other `Money(10, "USD")` - there is no "which ten dollars" question, the same way there is no "which 5" when you write `5`.
+
+This is the line that separates value objects from **entities**:
+
+<div class="vo-compare">
+  <div class="vo-compare__col">
+    <div class="vo-compare__label">Value object</div>
+    <ul class="vo-compare__list">
+      <li><span class="vo-compare__dot" aria-hidden="true"></span>Equal when fields are equal</li>
+      <li><span class="vo-compare__dot" aria-hidden="true"></span>Immutable - never changes after creation</li>
+      <li><span class="vo-compare__dot" aria-hidden="true"></span>No identity, interchangeable</li>
+      <li><span class="vo-compare__dot" aria-hidden="true"></span>Validates itself on construction</li>
+      <li><span class="vo-compare__dot" aria-hidden="true"></span>Money, Email, DateRange, Quantity</li>
+    </ul>
+  </div>
+  <div class="vo-compare__col">
+    <div class="vo-compare__label">Entity</div>
+    <ul class="vo-compare__list">
+      <li><span class="vo-compare__dot" aria-hidden="true"></span>Equal when IDs are equal</li>
+      <li><span class="vo-compare__dot" aria-hidden="true"></span>Mutable - has a lifecycle</li>
+      <li><span class="vo-compare__dot" aria-hidden="true"></span>Has a stable identity over time</li>
+      <li><span class="vo-compare__dot" aria-hidden="true"></span>Tracked, persisted, referenced</li>
+      <li><span class="vo-compare__dot" aria-hidden="true"></span>User, Order, Account, Invoice</li>
+    </ul>
+  </div>
+</div>
+
+<style>{`
+  .vo-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 1.5em 0 1.75em;
+  }
+  .vo-compare__col {
+    background: linear-gradient(180deg, var(--color-paper) 0%, rgba(var(--rgb-canvas), 0.9) 100%);
+    border: 1px solid rgb(var(--gray-light));
+    border-radius: 14px;
+    padding: 1.25rem 1.25rem 1.1rem;
+    box-shadow: 0 1px 2px rgba(15, 18, 25, 0.04), 0 8px 24px rgba(15, 18, 25, 0.04);
+  }
+  .vo-compare__label {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: rgb(var(--gray));
+    margin-bottom: 0.85rem;
+  }
+  .vo-compare__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .vo-compare__list li {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.35rem 0;
+    color: rgb(var(--gray-dark));
+    font-size: 0.98rem;
+    line-height: 1.4;
+  }
+  .vo-compare__dot {
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  }
+  @media (max-width: 640px) {
+    .vo-compare {
+      grid-template-columns: 1fr;
+    }
+  }
+`}</style>
+
+A good value object has four properties: it is **immutable**, it is **compared by value**, it **validates itself** so it can never hold a nonsensical state, and it **carries the behavior** that belongs to its concept.
+
+---
+
+## The Smell: Primitive Obsession
+
+The pattern is easiest to motivate by looking at what it replaces. Consider a function signature you have almost certainly written:
+
+```python
+def send_invoice(email: str, amount: float, currency: str) -> None:
+    ...
+```
+
+Everything here is technically typed, and all of it is a trap.
+
+- `email` accepts `""`, `"not-an-email"`, or the user's full name.
+- `amount` is a `float`, so `0.1 + 0.2` is `0.30000000000000004` and money quietly drifts.
+- `amount` and `currency` are two separate arguments, so nothing stops `send_invoice(email, 100, "EUR")` from being paired with a USD price elsewhere.
+- The validation - "is this a real email?", "is the amount non-negative?" - has to be repeated at every call site, and inevitably some call site forgets.
+
+This is **primitive obsession**: modeling domain concepts with raw `str`, `int`, `float`, and `dict` instead of types that understand the concept. The compiler (and `mypy`) cannot help you, because as far as the type system is concerned a price, a discount, and a refund are all just `float`.
+
+---
+
+## A First Value Object: Email
+
+Python gives us almost everything we need with one decorator: a frozen `dataclass`.
+
+```python
+import re
+from dataclasses import dataclass
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+@dataclass(frozen=True)
+class Email:
+    value: str
+
+    def __post_init__(self) -> None:
+        if not _EMAIL_RE.match(self.value):
+            raise ValueError(f"Invalid email address: {self.value!r}")
+
+    @property
+    def domain(self) -> str:
+        return self.value.split("@", 1)[1]
+```
+
+Three things happened here, and each one matters.
+
+`frozen=True` makes the instance immutable. Once an `Email` exists, nobody can reassign `email.value`. That is what makes it safe to pass around and to use as a dictionary key.
+
+`__post_init__` runs right after construction, so the regex check happens *once*, at the boundary. After this line succeeds, an `Email` is guaranteed to be valid for the rest of its life:
+
+```python
+Email("ops@tiptopdesign.pl")     # ok
+Email("nope")                     # raises ValueError immediately
+```
+
+And `domain` is behavior. The knowledge of "how do I get the domain out of an email" now lives with the email, not scattered across the codebase as `email.split("@")[1]`.
+
+The payoff is that this signature is now honest:
+
+```python
+def send_invoice(to: Email, amount: Money) -> None:
+    ...
+```
+
+If you are holding an `Email`, it is a valid email. There is no other possibility.
+
+---
+
+## Equality and Hashing Come for Free
+
+A frozen dataclass generates `__eq__` and `__hash__` for you, based on the fields. This is exactly the value semantics we want:
+
+```python
+Email("a@b.com") == Email("a@b.com")   # True - same value
+Email("a@b.com") is Email("a@b.com")   # False - different objects
+
+# Usable as dict keys and set members, because it is hashable:
+seen: set[Email] = {Email("a@b.com")}
+Email("a@b.com") in seen               # True
+```
+
+Compare that to dragging raw strings around: you get the same behavior, but with none of the validation guarantees, and no place to hang `domain` or `mask()` or any other email-specific behavior.
+
+---
+
+## Money: The Canonical Value Object
+
+Money is the example that converts skeptics, because the `float` version is actively dangerous.
+
+```python
+>>> 0.1 + 0.2
+0.30000000000000004
+>>> round(19.99 * 3, 2)
+59.97  # sometimes right, sometimes 59.96, depending on the inputs
+```
+
+You never want this anywhere near a balance. A proper `Money` value object stores an integer number of minor units (cents) and uses `Decimal` only at the edges for formatting.
+
+```python
+from __future__ import annotations
+
+from dataclasses import dataclass
+from decimal import Decimal
+
+
+@dataclass(frozen=True)
+class Money:
+    cents: int
+    currency: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.cents, int):
+            raise TypeError("Money.cents must be an int (minor units)")
+        if len(self.currency) != 3 or not self.currency.isupper():
+            raise ValueError(f"Invalid ISO currency: {self.currency!r}")
+
+    @classmethod
+    def of(cls, amount: str | Decimal, currency: str) -> "Money":
+        # Parse from a human amount like "19.99" without ever touching float.
+        minor = (Decimal(amount) * 100).to_integral_value()
+        return cls(int(minor), currency)
+
+    def _assert_same_currency(self, other: "Money") -> None:
+        if self.currency != other.currency:
+            raise ValueError(
+                f"Cannot combine {self.currency} with {other.currency}"
+            )
+
+    def __add__(self, other: "Money") -> "Money":
+        self._assert_same_currency(other)
+        return Money(self.cents + other.cents, self.currency)
+
+    def __sub__(self, other: "Money") -> "Money":
+        self._assert_same_currency(other)
+        return Money(self.cents - other.cents, self.currency)
+
+    def __mul__(self, qty: int) -> "Money":
+        return Money(self.cents * qty, self.currency)
+
+    def __str__(self) -> str:
+        return f"{Decimal(self.cents) / 100:.2f} {self.currency}"
+```
+
+Now look at what becomes *impossible*:
+
+```python
+price = Money.of("19.99", "USD")
+price * 3                       # Money(5997, "USD") -> "59.97 USD", exact
+price + Money.of("5.00", "USD") # ok
+price + Money.of("5.00", "EUR") # ValueError: Cannot combine USD with EUR
+```
+
+The currency-mixing bug - one of the most expensive and most common bugs in any system that touches money - is now a loud exception at the exact line where it happens, not a silently wrong total in a report three weeks later.
+
+Notice also that every operation returns a *new* `Money`. Value objects are immutable, so "adding" money does not mutate it - it produces a new value, exactly like `5 + 3` does not mutate `5`.
+
+---
+
+## Behavior Belongs on the Value Object
+
+A frequent misunderstanding is that a value object is just a typed container - a `NamedTuple` with extra steps. The real value shows up when behavior moves *onto* the type.
+
+Take a date range for a hotel booking or a subscription period:
+
+```python
+from dataclasses import dataclass
+from datetime import date
+
+
+@dataclass(frozen=True)
+class DateRange:
+    start: date
+    end: date
+
+    def __post_init__(self) -> None:
+        if self.start > self.end:
+            raise ValueError(f"start {self.start} is after end {self.end}")
+
+    @property
+    def nights(self) -> int:
+        return (self.end - self.start).days
+
+    def overlaps(self, other: "DateRange") -> bool:
+        return self.start < other.end and other.start < self.end
+
+    def __contains__(self, day: date) -> bool:
+        return self.start <= day < self.end
+```
+
+The "start must not be after end" invariant - which in primitive-land tends to be checked in some places and forgotten in others - is now enforced in exactly one spot. And the tricky logic ("do two ranges overlap?", "is this day inside the range?") lives where it belongs:
+
+```python
+stay = DateRange(date(2026, 7, 1), date(2026, 7, 5))
+stay.nights                                  # 4
+date(2026, 7, 3) in stay                     # True
+stay.overlaps(DateRange(date(2026, 7, 4), date(2026, 7, 9)))  # True
+```
+
+The off-by-one questions ("is the checkout day included?") get answered once, in the type, and never re-litigated at each call site.
+
+---
+
+## Case Study: A Checkout That Mixed Currencies
+
+Here is a stripped-down version of a bug I have seen more than once - a discount applied to a cart total, where the discount and the prices came from different parts of the system.
+
+The original code looked roughly like this:
+
+```python
+def cart_total(line_items: list[dict], discount: float, currency: str) -> float:
+    subtotal = 0.0
+    for item in line_items:
+        subtotal += item["price"] * item["quantity"]
+    total = subtotal - discount
+    return round(total, 2)
+```
+
+It passed every happy-path test. Then it shipped, and three problems surfaced over the following weeks.
+
+First, `discount` was sometimes computed against a EUR price list while the cart was in USD. Nothing crashed - the numbers just came out wrong, and finance found it during reconciliation.
+
+Second, `item["price"] * item["quantity"]` accumulated `float` error across large carts, so totals were occasionally one cent off, which fails strict payment-provider checks.
+
+Third, a promotion bug let `discount` exceed the subtotal, producing a *negative* total that the payment code happily tried to charge.
+
+Now the same flow with value objects:
+
+```python
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class LineItem:
+    name: str
+    unit_price: Money
+    quantity: int
+
+    def __post_init__(self) -> None:
+        if self.quantity <= 0:
+            raise ValueError("quantity must be positive")
+
+    @property
+    def subtotal(self) -> Money:
+        return self.unit_price * self.quantity
+
+
+def cart_total(items: list[LineItem], discount: Money) -> Money:
+    if not items:
+        raise ValueError("cart is empty")
+
+    total = items[0].subtotal
+    for item in items[1:]:
+        total += item.subtotal          # raises if currencies differ
+
+    result = total - discount           # raises if discount currency differs
+    if result.cents < 0:
+        raise ValueError("discount exceeds subtotal")
+    return result
+```
+
+Every one of the three production bugs is now structurally impossible:
+
+- Mixing currencies raises at the `+` or `-`, with a message naming both currencies.
+- There is no `float`, so totals are exact integer cents.
+- The negative-total guard lives in one place, and the empty-cart case is explicit.
+
+The code did not get longer in any meaningful way. It got *honest*. The types now encode the rules that previously lived only in the heads of whoever wrote the original happy path.
+
+---
+
+## Parse at the Boundary, Trust Everywhere Else
+
+The strategy that makes value objects pay off is sometimes called *parse, don't validate*. You convert untrusted primitives into value objects **once**, at the system boundary - the HTTP handler, the queue consumer, the CSV importer - and from that point inward everything is typed and trusted.
+
+```python
+def handle_create_invoice(payload: dict) -> None:
+    # Boundary: raw, untrusted primitives come in.
+    to = Email(payload["email"])
+    amount = Money.of(payload["amount"], payload["currency"])
+
+    # Past this line, `to` is a valid email and `amount` is valid money.
+    # No function downstream needs to re-check anything.
+    send_invoice(to=to, amount=amount)
+```
+
+Contrast this with the alternative, where `payload["email"]` is passed inward as a `str` and every layer either re-validates it (duplication) or assumes someone else did (bugs). With value objects, validation has a single, obvious home, and the type system carries the proof of validity for the rest of the call stack.
+
+---
+
+## Best Practices
+
+A few habits make the difference between value objects that help and value objects that become friction.
+
+- **Use `@dataclass(frozen=True)`** as the default. You get immutability, value equality, hashing, and a clean `repr` for free. Reach for `typing.NamedTuple` only when you want a lightweight tuple-compatible value with no custom behavior.
+- **Validate in `__post_init__`, and raise on invalid input.** A value object that can hold a bad value is not a value object - it is a dataclass with extra steps.
+- **Add named constructors as `classmethod`s** (`Money.of`, `Email.parse`, `Percentage.from_ratio`). They document intent and keep parsing logic out of call sites.
+- **Put behavior on the object.** If you find yourself writing `do_something(money.cents, money.currency)`, that function probably wants to be a method.
+- **Never use `float` for money.** Integer minor units plus `Decimal` at the edges. This single rule prevents a whole category of incidents.
+- **Keep them small and focused.** One concept per value object. If it grows a lifecycle, an ID, or needs to be mutated and persisted, it is an entity, not a value object.
+- **Mutate by replacement.** Add `with_*` helpers (`range.with_end(new_date)`) that return a new instance instead of changing state in place.
+
+For the rare case where you need to set a field during `__post_init__` on a frozen instance (for example, to normalize input), use `object.__setattr__`:
+
+```python
+@dataclass(frozen=True)
+class CountryCode:
+    value: str
+
+    def __post_init__(self) -> None:
+        normalized = self.value.strip().upper()
+        if len(normalized) != 2:
+            raise ValueError(f"Invalid country code: {self.value!r}")
+        object.__setattr__(self, "value", normalized)  # bypass frozen, once
+```
+
+---
+
+## When Not to Use Value Objects
+
+Like any pattern, this one has a blast radius, and wrapping *everything* is its own anti-pattern.
+
+<div class="vo-anti">
+  <div class="vo-anti__label">Do not reach for a value object when</div>
+  <ul class="vo-anti__list">
+    <li><span class="vo-anti__mark" aria-hidden="true">&times;</span>The value is a true throwaway primitive with no rules (a loop counter, an internal flag).</li>
+    <li><span class="vo-anti__mark" aria-hidden="true">&times;</span>The concept has identity and a lifecycle - that is an entity, model it as one.</li>
+    <li><span class="vo-anti__mark" aria-hidden="true">&times;</span>You would wrap a single field that never has an invariant or any behavior, purely for ceremony.</li>
+    <li><span class="vo-anti__mark" aria-hidden="true">&times;</span>A lightweight `NewType` alias already gives you the type-checker signal you actually needed.</li>
+    <li><span class="vo-anti__mark" aria-hidden="true">&times;</span>You are in a hot numeric loop where per-instance allocation measurably hurts (profile first).</li>
+  </ul>
+</div>
+
+<style>{`
+  .vo-anti {
+    background: linear-gradient(180deg, rgba(var(--rgb-red), 0.05) 0%, rgba(var(--rgb-red), 0.02) 100%), var(--color-paper);
+    border: 1px solid rgba(var(--rgb-red), 0.28);
+    border-radius: 14px;
+    padding: 1.25rem 1.25rem 1.1rem;
+    margin: 1.5em 0 1.75em;
+    box-shadow: 0 1px 2px rgba(15, 18, 25, 0.04), 0 8px 24px rgba(15, 18, 25, 0.04);
+  }
+  .vo-anti__label {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--color-red);
+    margin-bottom: 0.85rem;
+  }
+  .vo-anti__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .vo-anti__list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    padding: 0.4rem 0;
+    color: rgb(var(--gray-dark));
+    font-size: 0.98rem;
+    line-height: 1.45;
+  }
+  .vo-anti__mark {
+    flex: 0 0 auto;
+    color: var(--color-red);
+    font-weight: 700;
+    line-height: 1.4;
+  }
+`}</style>
+
+The honest middle ground for "I just want the type checker to stop me passing a `user_id` where an `order_id` goes" is `typing.NewType`:
+
+```python
+from typing import NewType
+
+UserId = NewType("UserId", int)
+OrderId = NewType("OrderId", int)
+
+def cancel(order_id: OrderId) -> None: ...
+
+cancel(UserId(7))   # mypy error - exactly the protection you wanted
+```
+
+`NewType` is a zero-cost, compile-time-only distinction. Use it when there is no invariant to enforce and no behavior to attach. Promote to a full value object the moment the concept grows a rule (a valid format, a non-negative constraint) or a method.
+
+---
+
+## The Most Important Takeaway
+
+The point of a value object is not the `@dataclass(frozen=True)`. It is the shift in *where bugs can exist*.
+
+With primitives, an invalid value can be created anywhere and detonate anywhere - the distance between cause and symptom is the whole codebase. With value objects, an invalid value cannot be *created* at all. The check happens once, at construction, and every line that holds the type afterward gets to assume it is valid.
+
+You are trading a tiny amount of upfront structure for the elimination of an entire category of "how did this `None`/empty string/negative total get here?" debugging sessions. For anything that resembles money, identifiers, contact details, ranges, or quantities, that trade is almost always worth it.
+
+---
+
+## Summary
+
+- A **value object** is a small, immutable type compared by value, that validates itself and carries its own behavior.
+- It is the cure for **primitive obsession** - modeling `Email`, `Money`, and `DateRange` as raw `str` and `float`.
+- In Python, `@dataclass(frozen=True)` gives you immutability, value equality, and hashing for free; `__post_init__` is where you enforce invariants.
+- Never represent money as `float`. Store integer minor units and use `Decimal` only at the edges.
+- **Parse at the boundary**: convert primitives to value objects once, then trust the types everywhere inward.
+- Put behavior on the object, use `classmethod` constructors, and keep each value object focused on one concept.
+- Skip the pattern for throwaway primitives, entities with a lifecycle, or cases where a `NewType` alias is all the safety you needed.
+
+If you are weighing how far to push value objects in a real Python service - or where the boundary between value objects and entities should sit in your domain - [get in touch](/contact/). I am happy to talk through the trade-offs.

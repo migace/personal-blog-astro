@@ -1,0 +1,512 @@
+---
+title: "Jak zbudowałem workflow oparty na LLM, który ustabilizował testy E2E w prawdziwym projekcie"
+description: "Flaky testy E2E to cisi zabójcy tempa zespołu. Oto jak zamieniłem LLM z generatora kodu w uczestnika procesu diagnostycznego - przy pomocy lokalnych skilli, plików wiedzy i reguł anty-flake'owych osadzonych w prawdziwym pakiecie regresji Playwright + Qase."
+pubDate: "May 4 2026"
+heroImage: "../../../assets/heroes/e2e-ai-case-study.webp"
+heroAlt: "Diagram workflow opartego na LLM do diagnozowania i stabilizowania testów E2E w Playwright"
+tags: ["AI Systems", "Quality"]
+lang: "pl"
+---
+
+*Jak zamiana wiedzy zespołu w wykonywalny workflow zmniejsza flakiness, przyspiesza diagnozę i utrzymuje zaufanie do rosnącego pakietu regresji.*
+
+---
+
+Flaky testy E2E to cisi zabójcy tempa zespołu.
+
+Marnują minuty CI, generują fałszywe alarmy, spowalniają wydania i stopniowo niszczą zaufanie do całego pakietu testów. Przez ostatni miesiąc nie tylko pisałem testy w Playwright. Budowałem workflow oparty na LLM, który pomagał diagnozować awarie, ograniczać flakiness i utrzymywać spójny standard testów regresyjnych w prawdziwym projekcie produkcyjnym.
+
+W tym projekcie używamy Playwrighta, testów regresyjnych, integracji z Qase oraz kilku flow, które z natury trudno testować: logowania, modali, płatności, iframe'ów, użytkowników o różnych stanach konta, dynamicznych odpowiedzi aplikacji, zewnętrznych zależności i CI.
+
+Na początku LLM pomagał mi punktowo: *„Dlaczego ten test się wywala?"*, *„Jak poprawić ten selektor?"*, *„Jak napisać tę asercję?"*. Szybko stało się jasne, że to za mało.
+
+Prawdziwy przełom nastąpił, gdy przestałem traktować LLM jak generator kodu i zacząłem traktować go jak uczestnika procesu diagnostycznego, który musi trzymać się lokalnych reguł projektu.
+
+---
+
+## Problem: flaky E2E to nie jeden typ buga
+
+Flaky testy rzadko mają jedną przyczynę.
+
+Czasem test klika za wcześnie. Czasem modal blokuje ekran. Czasem selektor był oparty na tekście, który zmienił się po refaktorze. Czasem `networkidle` nigdy nie nadchodzi, bo aplikacja robi polling w tle. Czasem test przechodzi lokalnie, ale w CI trafia na wolniejszy backend, rate limit albo opóźniony rendering.
+
+Najgorsze jest to, że szybkie „fixy" często tylko przenoszą problem gdzie indziej.
+
+Źle:
+
+```ts
+await page.waitForTimeout(3000)
+```
+
+Test zaczyna przechodzić. Na jakiś czas.
+
+Potem CI zwalnia, backend odpowiada później, modal pojawia się sekundę później i test znów staje się flaky. Tyle że teraz trudniej go zdiagnozować, bo jest naszpikowany magicznymi sleepami.
+
+Potrzebowałem czegoś więcej niż poprawiania testów. Potrzebowałem powtarzalnego sposobu pracy.
+
+---
+
+## Rezultaty
+
+To nie był eksperyment na zabawkowym repozytorium. Workflow działał na prawdziwym pakiecie regresji połączonym z Qase i Playwrightem.
+
+W momencie podsumowania:
+
+- **161 regresyjnych testów E2E** było powiązanych z przypadkami testowymi w Qase przez QaseID,
+- tylko **2 przypadki Qase o wysokim priorytecie** wciąż nie miały implementacji E2E,
+- powstały reużywalne **skille** do pisania, debugowania i przeglądania testów E2E,
+- **reguły anty-flake'owe** przeniosłem z „pamięci w czyjejś głowie" do plików wiedzy w repozytorium,
+- **diagnoza awarii stała się bardziej ustrukturyzowana**: znajdź test, uruchom go, sklasyfikuj błąd, przejrzyj powiązany kod, wyjaśnij pierwotną przyczynę i dopiero potem zastosuj poprawkę.
+
+Celowo nie twierdzę, że LLM „usunął wszystkie flaky testy". To byłoby nieuczciwe. Prawdziwy zysk był inny: mniej przypadkowych poprawek, szybsza diagnoza i powtarzalny standard pracy z E2E.
+
+---
+
+## Pierwsza lekcja: LLM bez kontekstu projektu produkuje kruche rozwiązania
+
+LLM dobrze zna Playwrighta. Ale nie zna mojego projektu.
+
+Nie wie, które helpery już istnieją. Nie wie, że w tym repo nie używamy `networkidle`. Nie wie, że negatywne asercje widoczności muszą przechodzić przez dedykowany helper. Nie wie, że testy regresyjne wymagają QaseID. Nie wie, które flow trzeba serializować, bo dotyka zewnętrznego sandboxa płatności.
+
+Jeśli podamy mu tylko błąd z terminala, często dostajemy fix, który w oderwaniu wygląda rozsądnie, ale nie pasuje do systemu.
+
+Dlatego zacząłem budować lokalny workflow oparty na dwóch elementach:
+
+- **skille** do konkretnych zadań,
+- **pliki wiedzy** z regułami testowania E2E.
+
+---
+
+## Gdzie i jak to wdrożyłem
+
+Workflow wdrożyłem bezpośrednio w repozytorium, a nie jako osobną aplikację LangChain, własny plugin do VS Code czy samodzielny wrapper CLI.
+
+Wykorzystałem skille agenta na poziomie repozytorium oraz pliki wiedzy:
+
+```
+.agents/
+  skills/
+    fix-e2e/
+      SKILL.md
+    regression-e2e/
+      SKILL.md
+  knowledge/
+    e2e-testing.md
+    e2e-regression.md
+```
+
+**Skille** to instrukcje w Markdownie, z których coding agent korzysta podczas pracy w repo. Definiują zachowanie dla konkretnego zadania: jak debugować wywalający się test, jak napisać test regresyjny, które pliki czytać najpierw, których helperów użyć i których reguł anty-flake'owych pilnować.
+
+**Pliki wiedzy** działają jak pamięć projektu. Zawierają konwencje Playwrighta, katalogi helperów, antywzorce, reguły nazewnictwa, konwencje Qase oraz przykłady z prawdziwej bazy kodu.
+
+Cały setup był celowo prosty:
+
+- żadnego własnego frameworka do orkiestracji LLM,
+- żadnego osobnego serwisu,
+- żadnego fine-tuningu,
+- żadnej skomplikowanej infrastruktury agentowej.
+
+Po prostu lokalne instrukcje w repozytorium, osadzone w bazie kodu i używane konsekwentnie podczas pracy z E2E.
+
+---
+
+## Skill `/fix-e2e`: LLM jako debugger, a nie maszyna do zgadywania
+
+Pierwszy ważny skill skupiał się na naprawianiu wywalających się testów E2E.
+
+Założenie było proste: LLM nie powinien od razu edytować testu. Najpierw musi przejść przez procedurę diagnostyczną.
+
+Workflow wyglądał z grubsza tak:
+
+<ol class="diag-flow">
+  <li><span class="diag-flow__title">Znajdź test</span><span class="diag-flow__desc">po nazwie pliku, ścieżce lub tytule.</span></li>
+  <li><span class="diag-flow__title">Przeczytaj cały test</span><span class="diag-flow__desc">od początku do końca, zanim postawisz jakąkolwiek hipotezę.</span></li>
+  <li><span class="diag-flow__title">Uruchom go lokalnie</span><span class="diag-flow__desc">aby odtworzyć awarię na maszynie developera.</span></li>
+  <li><span class="diag-flow__title">Sklasyfikuj awarię</span><span class="diag-flow__desc">asercja, selektor, race, błąd runtime, środowisko.</span></li>
+  <li><span class="diag-flow__title">Przeczytaj powiązany kod</span><span class="diag-flow__desc">helpery, komponenty lub logikę aplikacji, której to dotyczy.</span></li>
+  <li><span class="diag-flow__title">Ustal pierwotną przyczynę</span><span class="diag-flow__desc">opartą na dowodach, a nie na prawdopodobnych domysłach.</span></li>
+  <li><span class="diag-flow__title">Przedstaw diagnozę</span><span class="diag-flow__desc">prostym językiem, z widocznym tokiem rozumowania.</span></li>
+  <li><span class="diag-flow__title">Zastosuj poprawkę</span><span class="diag-flow__desc">dopiero po zatwierdzeniu diagnozy.</span></li>
+  <li><span class="diag-flow__title">Uruchom test ponownie</span><span class="diag-flow__desc">aby potwierdzić poprawkę i wypatrywać nowych objawów.</span></li>
+</ol>
+
+To zmienia dynamikę pracy.
+
+LLM nie „naprawia testu". Odpowiada na pytania:
+
+<ul class="diag-questions">
+  <li>Czy to awaria asercji?</li>
+  <li>Czy selektor zniknął z komponentu?</li>
+  <li>Czy test wychwycił błąd JavaScript w runtime?</li>
+  <li>Czy to race condition?</li>
+  <li>Czy test używa złego waitera?</li>
+  <li>Czy bug jest w aplikacji, a nie w teście?</li>
+</ul>
+
+<aside class="diag-pullquote">
+  W testach E2E łatwo osłabić test tak, żeby przechodził. Dużo trudniej zachować jego intencję i naprawić rzeczywistą przyczynę.
+</aside>
+
+<style>{`
+  .prose .diag-flow {
+    list-style: none;
+    counter-reset: diag;
+    padding: 0;
+    margin: 1.75em 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+  }
+  .prose .diag-flow li {
+    counter-increment: diag;
+    position: relative;
+    padding: 0.85rem 0.95rem 0.85rem 2.6rem;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0) 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .prose .diag-flow li:hover {
+    border-color: rgba(37, 99, 235, 0.45);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.1);
+  }
+  .prose .diag-flow li::before {
+    content: counter(diag);
+    position: absolute;
+    left: 0.7rem;
+    top: 0.85rem;
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--color-on-accent);
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  }
+  .prose .diag-flow__title {
+    font-weight: 700;
+    color: rgb(var(--gray-dark));
+    font-size: 0.96rem;
+    line-height: 1.25;
+  }
+  .prose .diag-flow__desc {
+    color: rgb(var(--gray));
+    font-size: 0.86rem;
+    line-height: 1.4;
+  }
+
+  .prose .diag-questions {
+    list-style: none;
+    padding: 1.1rem 1.2rem;
+    margin: 1.5em 0;
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    background:
+      linear-gradient(180deg, rgba(248, 250, 252, 0.7) 0%, rgba(248, 250, 252, 0) 100%);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 0.5rem 1.25rem;
+  }
+  .prose .diag-questions li {
+    position: relative;
+    padding-left: 1.4rem;
+    color: rgb(var(--gray-dark));
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+  .prose .diag-questions li::before {
+    content: "?";
+    position: absolute;
+    left: 0;
+    top: 0.05rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 50%;
+    background: rgba(37, 99, 235, 0.12);
+    color: var(--accent-dark);
+    font-weight: 700;
+    font-size: 0.74rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .prose .diag-pullquote {
+    margin: 1.75em 0;
+    padding: 1rem 1.2rem;
+    border-left: 3px solid var(--accent);
+    background: rgba(37, 99, 235, 0.06);
+    border-radius: 0 10px 10px 0;
+    color: rgb(var(--gray-dark));
+    font-size: 1.02rem;
+    line-height: 1.55;
+  }
+`}</style>
+
+---
+
+## Skill `regression-e2e`: LLM jako strażnik standardów
+
+Drugi skill skupiał się na pisaniu i rozszerzaniu testów regresyjnych.
+
+Tutaj najważniejsze było egzekwowanie lokalnych konwencji:
+
+- każdy test regresyjny ma jasno opisany scenariusz,
+- każdy test ma adnotację z QaseID,
+- używamy Profilera do wychwytywania krytycznych błędów JavaScript,
+- polegamy na istniejących helperach,
+- selektory definiujemy przez `data-testid`,
+- przed kliknięciem asertujemy, że element jest widoczny,
+- nie dodajemy arbitralnych timeoutów,
+- nie tworzymy nowych helperów, jeśli odpowiedni już istnieje.
+
+To brzmi jak dokumentacja. I dokładnie nią jest.
+
+Różnica polega na tym, że ta dokumentacja nie leży sobie tylko w repo. **Jest aktywnie używana przez LLM podczas pracy.**
+
+To była jedna z najważniejszych obserwacji z całego miesiąca:
+
+> Jeśli chcesz, żeby LLM dobrze pracował w projekcie, dobre prompty nie wystarczą. Potrzebujesz lokalnej pamięci projektu: reguł, helperów, antywzorców i przykładów.
+
+---
+
+## Pliki wiedzy: pamięć zespołu dla LLM
+
+Z czasem wyodrębniłem osobne pliki wiedzy dla E2E.
+
+Jeden opisywał ogólne reguły testowania w Playwright. Drugi - konwencje specyficzne dla testów regresyjnych.
+
+To tam mieszkały reguły takie jak te:
+
+- nie używaj `waitForLoadState('networkidle')`,
+- nie używaj magicznych sleepów przed asercjami,
+- używaj deterministycznych waitów,
+- sprawdzaj negatywną widoczność przez helper,
+- sprawdzaj opcjonalne elementy przez helper z timeoutem,
+- klikaj dopiero po `toBeVisible()`,
+- używaj typowanych selektorów i `createLocators()`,
+- testy, które dotykają płatności lub tworzenia konta, oznaczaj jako serial,
+- długie operacje muszą mieć uzasadniony timeout i komentarz.
+
+Ważna uwaga: te reguły nie wzięły się z teorii. Wydestylowałem je z prawdziwych awarii.
+
+Za każdą regułą stał konkretny incydent: timeout w CI, race condition, niestabilny modal, zewnętrzny sandbox, kruchy selektor albo fałszywie przechodząca negatywna asercja.
+
+---
+
+## Przykład: `networkidle` wygląda dobrze, dopóki nie zaczyna szwankować
+
+Jednym z klasycznych źródeł flakiness jest `networkidle`.
+
+W teorii brzmi rozsądnie: poczekajmy, aż sieć się uspokoi. W prawdziwej aplikacji potrafi to być pułapka. Analytics, polling, keep-alive'y czy requesty wywoływane po renderze mogą sprawić, że test czeka zbyt długo albo kończy czekanie w złym momencie.
+
+Źle:
+
+```ts
+await page.waitForLoadState('networkidle')
+```
+
+Dobrze:
+
+```ts
+await waitForAppToLoad(page)
+await expect(page.getByTestId('nav.workspace.profile.email')).toBeVisible()
+```
+
+To mniej „magiczne" i bardziej powiązane z intencją testu.
+
+Nie obchodzi mnie abstrakcyjny stan sieci. Obchodzi mnie to, czy aplikacja jest gotowa do interakcji i czy element, którego potrzebuję, jest widoczny.
+
+---
+
+## Przykład: negatywne asercje mogą tworzyć fałszywą pewność
+
+Inny częsty problem jest taki:
+
+Źle:
+
+```ts
+await expect(locator).not.toBeVisible()
+```
+
+Ta asercja może przejść natychmiast, zanim element w ogóle zdąży się pojawić. W testach UI daje to fałszywy sygnał: test przechodzi, ale nie zweryfikował rzeczywistego zachowania.
+
+Dobrze:
+
+```ts
+await expectNotVisible(ui.someElement)
+```
+
+Nie chodzi o to, że helper jest skomplikowany. Chodzi o to, że kod testu zaczyna wyrażać decyzję projektową: negatywna widoczność powinna poczekać, aż stan się ustabilizuje, a nie przechodzić przez przypadek.
+
+Dla LLM też ma to znaczenie. Jeśli skill mówi *„używaj `expectNotVisible()`"*, model nie wymyśla za każdym razem własnego wariantu.
+
+---
+
+## Przykład: Profiler zamienia wywalający się test w lepszy sygnał
+
+W testach E2E ścieżka użytkownika może przejść, podczas gdy aplikacja po drodze rzuca błędem JavaScript. Bez dodatkowego monitoringu taki test potrafi wyglądać na zielony.
+
+Dlatego używamy w testach Profilera do zbierania krytycznych błędów przeglądarki.
+
+Wzorzec jest prosty:
+
+```ts
+const profiler = new Profiler().start(page)
+
+// logika testu
+
+profiler.stop()
+expect(profiler.criticalErrors.length).toEqual(0)
+```
+
+To pomaga wychwycić przypadki, w których UI „jakoś działa", ale pod spodem pojawia się błąd runtime.
+
+Dla workflow opartego na LLM też ma to znaczenie, bo skill `/fix-e2e` klasyfikuje takie błędy inaczej niż zwykłe awarie asercji. Najpierw musimy zrozumieć, czy test się wywalił, bo użytkownik nie widzi elementu, czy dlatego, że aplikacja wyprodukowała krytyczny błąd w tle.
+
+---
+
+## Największa wartość: mniej decyzji podejmowanych od zera
+
+Po kilku tygodniach zauważyłem, że największą korzyścią nie była sama generacja kodu.
+
+Największą korzyścią było to, że **wielu decyzji nie trzeba już było podejmować od zera**.
+
+Gdy pojawiał się wywalający się test, LLM miał procedurę. Gdy trzeba było dodać test regresyjny, miał szablon. Gdy pojawiał się opcjonalny modal, miał helper. Gdy test wymagał użytkownika z aktywnym planem, wiedział, którego helpera użyć. Gdy flow dotykało zewnętrznego sandboxa, wiedział, żeby nie odpalać go na ślepo równolegle.
+
+To przyspiesza pracę, ale też ogranicza chaos.
+
+W testach E2E chaos jest drogi. Dwa pozornie nieszkodliwe testy mogą sobie wzajemnie przeszkadzać. Jeden sleep potrafi dołożyć minuty do całego pakietu. Jeden niestabilny selektor potrafi podkopać zaufanie do całej regresji.
+
+---
+
+## Co zadziałało najlepiej
+
+Szczególnie dobrze zadziałały trzy rzeczy.
+
+**Po pierwsze: oddzielenie pisania testów od ich debugowania.**
+
+To różne tryby pracy. Pisząc test, myślisz o flow użytkownika, pokryciu regresją i czytelności. Debugując test, myślisz o objawach, źródle awarii i najmniejszej zmianie, która zachowuje intencję testu.
+
+**Po drugie: wymaganie diagnozy przed wprowadzeniem zmiany.**
+
+To ogranicza pokusę szybkiego łatania. LLM najpierw musiał wyjaśnić, co się stało, dlaczego się stało i jakie dowody za tym stoją.
+
+**Po trzecie: dokumentowanie antywzorców.**
+
+„Pisz dobre testy" nic nie znaczy. Konkretne reguły są dużo skuteczniejsze:
+
+<div class="antipatterns">
+  <div class="antipatterns__col">
+    <div class="antipatterns__label">Antywzorce, których należy unikać</div>
+    <ul class="antipatterns__list">
+      <li><span class="antipatterns__mark" aria-hidden="true">×</span>Nie używaj <code>networkidle</code></li>
+      <li><span class="antipatterns__mark" aria-hidden="true">×</span>Nie klikaj bez wcześniejszego asertowania widoczności</li>
+      <li><span class="antipatterns__mark" aria-hidden="true">×</span>Nie dodawaj timeoutu bez powodu</li>
+      <li><span class="antipatterns__mark" aria-hidden="true">×</span>Nie używaj <code>isVisible()</code> jako waitera</li>
+      <li><span class="antipatterns__mark" aria-hidden="true">×</span>Nie osłabiaj asercji tylko po to, żeby test przeszedł</li>
+    </ul>
+  </div>
+</div>
+
+<style>{`
+  .antipatterns {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin: 1.5em 0 1.75em;
+  }
+  .antipatterns__col {
+    background: linear-gradient(180deg, rgba(var(--rgb-red), 0) 0%, rgba(var(--rgb-red), 0.04) 100%), var(--color-paper);
+    border: 1px solid rgba(var(--rgb-red), 0.18);
+    border-radius: 14px;
+    padding: 1.25rem 1.25rem 1.1rem;
+    box-shadow:
+      0 1px 2px rgba(15, 18, 25, 0.04),
+      0 8px 24px rgba(var(--rgb-red), 0.06);
+  }
+  .antipatterns__label {
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--color-red);
+    margin-bottom: 0.85rem;
+  }
+  .antipatterns__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .antipatterns__list li {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.4rem 0;
+    color: rgb(var(--gray-dark));
+    font-size: 0.98rem;
+    line-height: 1.4;
+    border-bottom: 1px dashed rgba(var(--rgb-red), 0.12);
+  }
+  .antipatterns__list li:last-child {
+    border-bottom: none;
+  }
+  .antipatterns__mark {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(var(--rgb-red), 0.1);
+    color: var(--color-red);
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1;
+    box-shadow: 0 0 0 3px rgba(var(--rgb-red), 0.08);
+  }
+  .antipatterns__list code {
+    background: rgba(var(--rgb-red), 0.08) !important;
+    color: var(--color-red) !important;
+  }
+`}</style>
+
+---
+
+## Czego LLM wciąż nie zastępuje
+
+Ten workflow nie sprawił, że LLM „przejął testowanie".
+
+Wiedza o produkcie wciąż jest potrzebna. Wciąż trzeba rozumieć, czy wywalający się test wskazuje na buga w aplikacji, czy na buga w teście. Wciąż trzeba odróżnić flaky objaw od pierwotnej przyczyny. Wciąż trzeba wiedzieć, które asercje są krytyczne biznesowo, a które to tylko przypadkowe detale UI.
+
+LLM jest bardzo dobry w pracy z kontekstem, porównywaniu wzorców, czytaniu błędów, proponowaniu zmian i podążaniu za checklistą.
+
+Ale to człowiek wciąż musi ustalić standard.
+
+Bez tego standardu LLM bardzo szybko potrafi wyprodukować mnóstwo testów, którym nikt nie ufa.
+
+---
+
+## Najważniejszy wniosek
+
+Po miesiącu pracy z testami E2E jestem przekonany, że najlepsze zastosowanie LLM w testowaniu to nie „napisz test".
+
+Najlepsze zastosowanie to **zamiana wiedzy zespołu w wykonywalny workflow**.
+
+Skille, pliki wiedzy, katalogi helperów, reguły anty-flake'owe, szablony i procedury diagnostyczne sprawiają, że LLM zachowuje się jak narzędzie wbudowane w projekt, a nie jak zewnętrzny generator kodu.
+
+I to właśnie różnica między **AI-assisted coding** a **AI-assisted engineering**.
+
+W pierwszym przypadku dostajesz kod szybciej.
+
+W drugim budujesz system, który pomaga utrzymać jakość w miarę, jak projekt rośnie, liczba testów się zwiększa, a CI musi pozostać godne zaufania.

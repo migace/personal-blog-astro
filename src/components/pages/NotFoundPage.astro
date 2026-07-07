@@ -1,0 +1,66 @@
+---
+import BaseHead from "../BaseHead.astro";
+import Header from "../Header.astro";
+import Footer from "../Footer.astro";
+import { SITE_TITLE } from "../../consts";
+import { getLocaleMeta, localizePath, useTranslations } from "../../i18n/utils";
+import type { Lang } from "../../i18n/ui";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+const { htmlLang } = getLocaleMeta(lang);
+---
+
+<!doctype html>
+<html lang={htmlLang}>
+  <head>
+    <BaseHead
+      title={`${t("notFound.metaTitle")} - ${SITE_TITLE}`}
+      description={t("notFound.metaDescription")}
+      lang={lang}
+    />
+  </head>
+  <body>
+    <Header lang={lang} />
+    <main id="main" class="notfound">
+      <p class="eyebrow">{t("notFound.eyebrow")}</p>
+      <h1>{t("notFound.title")}</h1>
+      <p class="notfound__lead">{t("notFound.lead")}</p>
+      <div class="notfound__actions">
+        <a class="button button--primary" href={localizePath("/", lang)}>{t("notFound.home")}</a>
+        <a class="button button--secondary" href={localizePath("/blog/", lang)}>{t("notFound.blog")}</a>
+        <a class="button button--secondary" href={localizePath("/contact/", lang)}>{t("notFound.contact")}</a>
+      </div>
+    </main>
+    <Footer lang={lang} />
+
+    <style>
+      .notfound {
+        max-width: 640px;
+        padding: var(--space-16) 0 var(--space-24);
+      }
+
+      .notfound h1 {
+        margin: 0 0 var(--space-4);
+      }
+
+      .notfound__lead {
+        margin: 0;
+        color: var(--color-graphite);
+        font-size: 1.1rem;
+        line-height: var(--leading-relaxed);
+      }
+
+      .notfound__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        margin-top: var(--space-8);
+      }
+    </style>
+  </body>
+</html>

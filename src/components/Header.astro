@@ -1,33 +1,84 @@
 ---
 import HeaderLink from "./HeaderLink.astro";
 import SocialLinks from "./SocialLinks.astro";
+import LanguageSwitcher from "./LanguageSwitcher.astro";
+import ThemeToggle from "./ThemeToggle.astro";
 import { SITE_TITLE } from "../consts";
+import { localizePath, servicesPath, useTranslations } from "../i18n/utils";
+import type { Lang } from "../i18n/ui";
+
+interface Props {
+  lang?: Lang;
+  // Optional per-language href overrides for the language switcher (blog posts).
+  langHrefs?: Partial<Record<Lang, string>>;
+}
+
+const { lang = "en", langHrefs } = Astro.props;
+const t = useTranslations(lang);
+
+const homeHref = localizePath("/", lang);
+const blogHref = localizePath("/blog/", lang);
+const aboutHref = localizePath("/about/", lang);
+const contactHref = localizePath("/contact/", lang);
+const servicesHref = servicesPath(lang);
 ---
 
+<a class="skip-link" href="#main">{t("a11y.skipToContent")}</a>
+
 <header class="site-header">
-  <nav class="site-nav" aria-label="Main navigation">
-    <a class="brand" href="/">
-      <span>{SITE_TITLE}</span>
-      <small>Michał Gacek</small>
+  <nav class="site-nav" aria-label={t("nav.ariaMain")}>
+    <a class="brand" href={homeHref}>
+      <svg class="brand__mark" viewBox="0 0 128 128" width="30" height="30" aria-hidden="true">
+        <rect x="4" y="4" width="120" height="120" rx="28" fill="#0b1020"></rect>
+        <circle cx="30" cy="33" r="7" fill="#dc2626"></circle>
+        <circle cx="54" cy="33" r="7" fill="#f59e0b"></circle>
+        <circle cx="78" cy="33" r="7" fill="#84cc16"></circle>
+        <path d="M30 64 L52 80 L30 96" stroke="#12a89d" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+        <rect x="64" y="90" width="34" height="11" rx="5.5" fill="#ffffff"></rect>
+      </svg>
+      <span class="brand__text">
+        <span>{SITE_TITLE}</span>
+        <small>{t("brand.tagline")}</small>
+      </span>
     </a>
 
     <div class="internal-links">
-      <HeaderLink href="/" data-spy="home">Home</HeaderLink>
-      <a href="/#services" data-spy="services">Services</a>
-      <HeaderLink href="/blog">Blog</HeaderLink>
-      <HeaderLink href="/about">About</HeaderLink>
+      <HeaderLink href={homeHref}>{t("nav.home")}</HeaderLink>
+      <HeaderLink href={servicesHref}>{t("nav.services")}</HeaderLink>
+      <HeaderLink href={blogHref}>{t("nav.blog")}</HeaderLink>
+      <HeaderLink href={aboutHref}>{t("nav.about")}</HeaderLink>
     </div>
 
     <div class="nav-actions">
+      <ThemeToggle lang={lang} />
+      <LanguageSwitcher lang={lang} hrefs={langHrefs} />
       <SocialLinks compact />
-      <a class="button button--primary nav-cta" href="/contact/">
-        Contact
+      <a class="button button--primary nav-cta" href={contactHref}>
+        {t("nav.contact")}
       </a>
     </div>
   </nav>
 </header>
 
 <style>
+  .skip-link {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 40;
+    padding: 0.6rem 1rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    font-weight: 700;
+    text-decoration: none;
+    transform: translateY(-300%);
+  }
+
+  .skip-link:focus-visible {
+    transform: none;
+  }
+
   .site-header {
     position: sticky;
     top: 0;
@@ -50,15 +101,26 @@ import { SITE_TITLE } from "../consts";
 
   .brand {
     display: inline-flex;
-    flex-direction: column;
-    align-items: flex-start;
+    gap: 0.55rem;
+    align-items: center;
     width: fit-content;
     color: var(--color-ink);
     line-height: 1.05;
     text-decoration: none;
   }
 
-  .brand span {
+  .brand__mark {
+    flex: 0 0 auto;
+    display: block;
+  }
+
+  .brand__text {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .brand__text span {
     font-size: 1rem;
     font-weight: 700;
   }
@@ -92,8 +154,8 @@ import { SITE_TITLE } from "../consts";
 
   .internal-links a:hover,
   .internal-links a.active {
-    background: rgba(var(--rgb-blue), 0.08);
-    color: var(--color-blue-deep);
+    background: rgba(var(--rgb-accent), 0.08);
+    color: var(--color-accent-strong);
   }
 
   .nav-actions {
@@ -133,38 +195,21 @@ import { SITE_TITLE } from "../consts";
       max-width: calc(100% - 1.25rem);
     }
 
+    /* The first row (brand + actions) is tight on small phones; let it wrap
+       instead of forcing horizontal page overflow. */
+    .nav-actions {
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
     .brand small {
       display: none;
     }
 
     .nav-cta {
       min-height: 2.2rem;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.82rem;
     }
   }
 </style>
-
-<script>
-  function initNavScrollSpy() {
-    const path = window.location.pathname;
-    if (path !== "/" && path !== "") return;
-
-    const homeLink = document.querySelector<HTMLAnchorElement>('[data-spy="home"]');
-    const servicesLink = document.querySelector<HTMLAnchorElement>('[data-spy="services"]');
-    const servicesSection = document.getElementById("services");
-    if (!homeLink || !servicesLink || !servicesSection) return;
-
-    const update = () => {
-      const offset = 120;
-      const reachedServices =
-        window.scrollY + offset >= servicesSection.offsetTop;
-      homeLink.classList.toggle("active", !reachedServices);
-      servicesLink.classList.toggle("active", reachedServices);
-    };
-
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-  }
-
-  initNavScrollSpy();
-</script>

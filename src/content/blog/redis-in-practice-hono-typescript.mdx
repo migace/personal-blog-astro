@@ -2,10 +2,8 @@
 title: "Redis in Practice: A Case Study with Hono and TypeScript"
 description: "A practical case study of using Redis in a small Hono + TypeScript API - caching, counters, rate limiting, and short-lived state. Patterns that solve real backend problems, not abstract SET foo bar tutorials."
 pubDate: "May 9 2026"
-heroImage: "/redis-case-study.webp"
+heroImage: "../../assets/heroes/redis-case-study.webp"
 heroAlt: "Redis case study diagram showing cache, counters, rate limiting, and short-lived backend state"
-heroWidth: 1400
-heroHeight: 600
 tags: ["Backend", "TypeScript"]
 ---
 
@@ -600,7 +598,7 @@ Redis is worth considering when you have one of these situations on your hands -
     margin: 1.5em 0 1.75em;
   }
   .redis-when__col {
-    background: linear-gradient(180deg, #ffffff 0%, rgba(248, 250, 252, 0.9) 100%);
+    background: linear-gradient(180deg, var(--color-paper) 0%, rgba(var(--rgb-canvas), 0.9) 100%);
     border: 1px solid rgb(var(--gray-light));
     border-radius: 14px;
     padding: 1.25rem 1.25rem 1.1rem;

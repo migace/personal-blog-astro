@@ -1,0 +1,297 @@
+---
+title: "MCP nie umarł. Większość zespołów po prostu nie nauczyła się go oceniać"
+description: "Praktyczna ocena MCP i narzędzi CLI dla agentów AI, obejmująca centralizację, bezpieczeństwo, obserwowalność, opóźnienia i workflowy hybrydowe."
+pubDate: "March 15 2026"
+heroImage: "../../../assets/heroes/mcp-vs-cli.webp"
+heroAlt: "Diagram porównujący serwery MCP z uruchamianiem narzędzi z linii poleceń w workflowach agentów AI"
+tags: ["AI Systems", "Developer Tools"]
+lang: "pl"
+---
+
+import Image from 'astro/components/Image.astro';
+import localVsCentralDiagram from '../../../assets/heroes/local-execution-vs-centralization.webp';
+
+*Dlaczego obecna fala krytyki MCP mówi więcej o cyklach hype'u w branży niż o realnej przyszłości narzędzi dla agentów.*
+
+---
+
+Kilka miesięcy temu wszyscy chcieli rozmawiać o MCP.
+
+Teraz nastroje się zmieniły. Nowa modna teza brzmi: MCP było głównie hype'em, dokłada zbędnej złożoności, a kto buduje na poważnie, powinien po prostu używać CLI.
+
+Uważam, że ten wniosek jest zbyt płytki.
+
+Zanim pójdziemy dalej, warto jasno zdefiniować pojęcie. **MCP (Model Context Protocol)** to otwarty standard łączenia aplikacji i agentów AI z zewnętrznymi narzędziami, źródłami danych i workflowami. W praktyce daje systemom AI ustrukturyzowany sposób sięgania po funkcje wykraczające poza sam model.
+
+Problemem nigdy nie był sam MCP. Problemem było to, że zbyt wielu ludzi oceniało go na niewłaściwej warstwie.
+
+Jeśli Twój świat to pojedynczy programista, lokalny agent kodujący i garstka znajomych narzędzi, to owszem - CLI często jest lepszym interfejsem. W wielu takich sytuacjach sam bym je wybrał.
+
+Ale gdy tylko przechodzisz od pracy w pojedynkę do systemów dla całego zespołu i całej organizacji, rozmowa zmienia się całkowicie. Wtedy prawdziwe pytania nie dotyczą już samego wywoływania narzędzi. Dotyczą **bezpieczeństwa, spójności, obserwowalności, dystrybucji, zarządzania (governance) i wspólnego kontekstu**.
+
+I właśnie tu MCP staje się ważny.
+
+Więc nie - nie uważam, że MCP umarł. Uważam, że wreszcie dochodzimy do punktu, w którym branża musi przestać traktować go jak trend i zacząć oceniać jak **infrastrukturę**.
+
+---
+
+## Argument za CLI jest prawdziwy
+
+Dla jasności: argument za CLI to nie bzdura. W wielu przypadkach jest trafny.
+
+Narzędzia CLI często są świetnym interfejsem dla agentów, zwłaszcza gdy są już mocno reprezentowane w danych treningowych modelu. `git`, `grep`, `jq`, `curl`, `psql` czy CLI dostawców chmury to znajomy teren. Modele widziały niezliczone przykłady ich użycia, więc zwykle wymagają znacznie mniej naprowadzania niż autorskie API albo zamknięte nakładki na narzędzia.
+
+To ma znaczenie.
+
+Potrafi zmniejszyć narzut promptu. Potrafi ograniczyć tarcia. Potrafi sprawić, że workflowy agentów wydają się szybsze i bardziej naturalne. A w połączeniu z potokami powłoki CLI ułatwia też pobieranie, filtrowanie i przekształcanie danych, zanim w ogóle trafią do okna kontekstu modelu.
+
+To realna przewaga.
+
+Dla lokalnych workflowów nastawionych na wykonywanie CLI często jest najczystszą dostępną abstrakcją.
+
+Ale to nie znaczy, że jest to *zawsze* właściwa abstrakcja.
+
+---
+
+## Gdy narzędzia stają się autorskie, historia się zmienia
+
+Model może wiedzieć, jak używać `git`. Nie wie, jak obsłużyć wewnętrzne narzędzie do deploymentu w Twojej firmie, asystenta zgodności, narzędzie do reagowania na incydenty czy CLI do obsługi klientów.
+
+Gdy tylko narzędzia robią się szyte na miarę, rzekoma prostota opowieści o CLI zaczyna się sypać.
+
+Teraz model musi wiedzieć:
+
+- że narzędzie w ogóle istnieje
+- do czego służy
+- kiedy go użyć
+- które komendy lub podkomendy są istotne
+- jakich parametrów oczekuje
+- jak wygląda sukces, a jak porażka
+
+Te informacje muszą skądś pochodzić.
+
+Możesz wrzucić je do `README.md`, `AGENTS.md`, `CLAUDE.md`, wewnętrznej dokumentacji, tekstu pomocy w powłoce albo do przykładów. Ale nie uciekniesz przed potrzebą struktury - po prostu przenosisz ją gdzie indziej.
+
+To jedna z największych słabości obecnego dyskursu anty-MCP. Udaje, że autorskie CLI jakimś cudem usuwają problem kontekstu. Nie usuwają. W wielu przypadkach po prostu wprowadzają go z powrotem, tylko że mniej jawnie.
+
+Tak, schemat narzędzia MCP bywa rozwlekły. Ale przynajmniej jest ustrukturyzowany. Daje czytelny dla maszyny kontrakt interfejsu. I agent nie musi się domyślać zachowania z porozrzucanych tekstów pomocy i połowicznych konwencji.
+
+To nie znaczy, że MCP zawsze wygrywa. Znaczy tylko, że debata jest dużo bardziej zniuansowana niż *„CLI jest lekkie, MCP jest rozdęte"*.
+
+---
+
+## Większość debaty pomija najważniejsze rozróżnienie
+
+Największe nieporozumienie w tej całej rozmowie polega na tym, że ludzie wciąż mówią o MCP tak, jakby był jedną rzeczą.
+
+Nie jest.
+
+Jest ogromna różnica między **lokalnym MCP po stdio** a **zdalnym MCP po HTTP**. Oficjalna dokumentacja MCP wprost rozróżnia połączenia lokalne i zdalne, a dzisiejszy ekosystem protokołu traktuje narzędzia, prompty i zasoby jako pełnoprawne pojęcia, nie tylko jako wywołania narzędzi.
+
+Jeśli mówisz o lokalnych serwerach MCP działających tuż obok lokalnego agenta, sceptycyzm jest zrozumiały. Często bezpośrednie CLI będzie prostsze i bardziej praktyczne. Przy nieskomplikowanych lokalnych workflowach MCP faktycznie potrafi sprawiać wrażenie zbędnej maszynerii.
+
+Ale **zdalny MCP to zupełnie inna kategoria**.
+
+Zdalny MCP to nie kolejny sposób na wywołanie narzędzia. To sposób dostarczania funkcji w całej organizacji przez kontrolowany, ustandaryzowany interfejs.
+
+I właśnie tam wartość robi się znacznie ciekawsza.
+
+---
+
+## W firmie problemem nie jest głównie wywoływanie narzędzi
+
+W tym miejscu duża część dyskusji z mediów społecznościowych przestaje być przydatna.
+
+W prawdziwych zespołach trudność zwykle nie polega na *„jak agent wywołuje funkcję?"*
+
+Trudne jest co innego:
+
+- jak zarządzać dostępem
+- jak bezpiecznie udostępniać wewnętrzne funkcje
+- jak utrzymać instrukcje na bieżąco
+- jak monitorować użycie
+- jak sprawić, żeby wiele zespołów korzystało z tych samych systemów spójnie
+- jak nie dopuścić, by każde repo stało się własnym prywatnym eksperymentem z promptami
+
+To nie są problemy powłoki. To **problemy platformowe**.
+
+A problemy platformowe to dokładnie ten obszar, w którym zdalny MCP zaczyna mieć sens.
+
+Scentralizowana warstwa MCP daje zespołom wspólny sposób udostępniania narzędzi, zasobów i instrukcji w różnych środowiskach agentowych. Tworzy stabilny mechanizm dostarczania, zamiast zmuszać każdego klienta i każde repo do rozwiązywania tych samych problemów od zera.
+
+To ma znacznie większe znaczenie, niż wielu chce przyznać.
+
+Bo gdy tylko agenci wychodzą z trybu demo i wchodzą w codzienną pracę inżynierską, lokalna wygoda przestaje być jedynym, co się liczy.
+
+---
+
+## Centralizacja to nie wada - to funkcja
+
+W kulturze programistów centralizację często traktuje się podejrzliwie. Ale na poziomie organizacji to właśnie ona często sprawia, że system w ogóle da się ogarnąć.
+
+Scentralizowana warstwa funkcji pozwala wsadzić złożoność tam, gdzie jej miejsce: za granicą zarządzanej usługi, a nie na każdym laptopie, każdym runnerze, w każdym efemerycznym środowisku i przy każdej instalacji agenta kodującego.
+
+<Image src={localVsCentralDiagram} alt="Diagram porównujący lokalne wykonywanie CLI z granicami scentralizowanej usługi MCP" widths={[480, 760, 1400]} sizes="(max-width: 760px) 100vw, 700px" />
+
+To odblokowuje sporo:
+
+- bogatsze backendy
+- współdzielony stan
+- wewnętrzne bazy danych
+- egzekwowanie polityk
+- kontrolę wersji na warstwie platformy
+- ustandaryzowane interfejsy w różnych narzędziach i zespołach
+
+Liczy się to szczególnie w efemerycznych runtime'ach: zadaniach CI, hostowanych agentach kodujących, sandboxach w chmurze czy krótko żyjących kontenerach. W takich środowiskach *„po prostu zainstaluj CLI"* często nie jest tym uproszczeniem, na jakie na pierwszy rzut oka wygląda. Potrafi się szybko zamienić w problem pakowania, wersjonowania i zarządzania środowiskiem.
+
+Zdalny MCP zmienia ten model. Klient zostaje cienki. Całą złożoność bierze na siebie serwer.
+
+To nie ceremonia. To **dźwignia**.
+
+---
+
+## Kompromisy są realne: opóźnienia, koszt i narzut operacyjny
+
+Trzeba jednak powiedzieć: zdalny MCP nie jest darmowy.
+
+Gdy tylko przenosisz funkcje za granicę sieci, dochodzą kompromisy, których lokalne narzędzia często unikają. Każde zdalne wywołanie dokłada trochę opóźnienia sieciowego. Nawet jeśli ten narzut jest akceptowalny w wielu workflowach korporacyjnych, to i tak istnieje. Przy szybkich, ciasnych pętlach feedbacku lokalne wykonanie potrafi być zauważalnie lepsze.
+
+Jest też koszt infrastruktury. Scentralizowaną warstwę MCP trzeba hostować, zabezpieczać, monitorować, wersjonować i utrzymywać. Ktoś musi odpowiadać za dostępność, logi, reagowanie na incydenty, polityki dostępu i kompatybilność. Lokalne narzędzia często wydają się przy tym „darmowe", bo obciążenie operacyjne jest dużo mniejsze i bardziej rozproszone.
+
+Właśnie dlatego nie uważam, żeby właściwym wnioskiem było *„zdalny MCP wszędzie"*.
+
+Lepszy wniosek brzmi: zespoły powinny być wobec tego kompromisu szczere:
+
+- **lokalne CLI** często wygrywa na szybkości, prostocie i niskim narzucie
+- **zdalny MCP** często wygrywa na governance, ponownym użyciu, bezpieczeństwie i kontroli
+
+To znacznie poważniejszy sposób oceniania architektury.
+
+---
+
+## Bezpieczeństwo wygląda zupełnie inaczej w skali
+
+Bezpieczeństwo to kolejny obszar, w którym argument „najpierw CLI" brzmi prościej, niż jest naprawdę.
+
+Lokalne narzędzia, które gadają z chronionymi systemami, zwykle potrzebują poświadczeń. Im więcej funkcji rozdajesz jako lokalne binarki czy skrypty, tym częściej rozsyłasz na brzeg sieci tokeny, sekrety, uprawnienia i konfigurację.
+
+W niektórych środowiskach to do przyjęcia. Ale zwykle nie taki model chcesz mieć, gdy projektujesz pod kątem skali.
+
+Scentralizowana usługa MCP daje czystszy wzorzec. Użytkownicy i runtime'y uwierzytelniają się wobec jednego kontrolowanego interfejsu, a wrażliwy dostęp do systemów zostaje za granicą usługi. Sekrety zostają w jednym miejscu. Dostęp łatwiej odebrać. Rośnie audytowalność. Governance staje się bardziej realne. Dokumentacja MCP ma też osobne wskazówki o autoryzacji dla transportów po HTTP, co tylko potwierdza, że ten model pasuje do wdrożeń zdalnych.
+
+To nie jest żadna magiczna cecha wyłączna dla MCP. To operacyjna przewaga udostępniania funkcji przez zarządzaną, ustandaryzowaną warstwę, zamiast rozsiewania uprzywilejowanego dostępu po każdym kontekście wykonawczym.
+
+Dla poważnych zespołów to duża korzyść.
+
+---
+
+## Obserwowalność to miejsce, w którym zaczyna się dojrzałość
+
+Gdy organizacja zaczyna polegać na agentach w prawdziwej pracy, jedno pytanie staje się nieuniknione:
+
+> Czy Ty w ogóle wiesz, co te agenty robią?
+
+Nie w teorii. W praktyce.
+
+Których narzędzi używają? Które zawodzą najczęściej? Które zasoby pomagają? Które prompty poprawiają wyniki? Gdzie agenty się zacinają? Gdzie marnuje się czas? Które workflowy dają wartość?
+
+Jeśli nie umiesz odpowiedzieć na te pytania, to nie prowadzisz dojrzałej platformy agentowej. Prowadzisz luźny zbiór eksperymentów.
+
+To jeden z najmocniejszych argumentów za MCP w warunkach organizacyjnych. Scentralizowana warstwa MCP daje Ci naturalne miejsce na telemetrię, tracing, metryki i analizę użycia. Pozwala obserwować zachowanie systematycznie, zamiast opierać się na anegdotycznym feedbacku od pojedynczych zespołów.
+
+Jasne, lokalne narzędzia CLI też da się oinstrumentować. Ale każdy, kto robił przy wewnętrznych platformach, zna różnicę między *„da się"* a *„da się realnie utrzymać w skali"*.
+
+Obserwowalność wygrywa, gdy system ma środek ciężkości.
+
+---
+
+## MCP staje się znacznie cenniejszy, gdy przestajesz myśleć tylko o narzędziach
+
+Jednym z największych błędów w tej dyskusji jest sprowadzanie MCP do wywoływania funkcji.
+
+To pomija ogromną część tego, co MCP daje.
+
+Organizacje nie potrzebują tylko agentów, którzy coś *robią*. Potrzebują agentów, którzy działają z właściwymi instrukcjami, właściwymi standardami i właściwym kontekstem.
+
+Dlatego prompty i zasoby dostarczane przez protokół są tak ważne. Oficjalne materiały MCP opisują trzy podstawowe rodzaje funkcji udostępnianych przez serwery: **narzędzia (tools)**, **zasoby (resources)** i **prompty (prompts)**.
+
+Gdy możesz już rozprowadzać wspólne wytyczne, wewnętrzne playbooki, standardy kodowania, notatki architektoniczne, instrukcje dla konkretnych usług i dokumentację operacyjną przez scentralizowaną warstwę, rozwiązujesz znacznie większy problem niż *„dostęp do narzędzi"*.
+
+Budujesz sposób na ujednolicenie tego, jak agenty zachowują się w różnych zespołach i środowiskach.
+
+To jedna z najwyraźniejszych dróg od chaotycznego rozlewania się promptów po repo ku czemuś bliższemu prawdziwej inżynierii agentów.
+
+Statyczny markdown rozsiany po repozytoriach nie skaluje się najlepiej. Scentralizowane, aktualne zasoby wielokrotnego użytku - już tak.
+
+I właśnie tu, moim zdaniem, wielu wciąż nie docenia MCP. Oceniają go jak protokół wykonawczy, a w praktyce może być częścią warstwy dostarczania **wiedzy instytucjonalnej**.
+
+---
+
+## Prawdziwa debata to nie CLI kontra MCP
+
+Bardziej użyteczne pytanie brzmi:
+
+> Optymalizujesz pod **lokalne wykonywanie** czy pod **dostarczanie funkcji w skali organizacji**?
+
+Jeśli pod lokalne wykonywanie, CLI często będzie lepszą odpowiedzią. Jest znajome, elastyczne, składalne i wydajne.
+
+Jeśli pod dostarczanie funkcji w skali organizacji, na pierwszy plan wychodzą inne priorytety:
+
+- spójność
+- kontrola dostępu
+- propagacja aktualizacji
+- telemetria
+- standaryzacja
+- wspólne instrukcje
+- kompatybilność między wieloma klientami agentów
+
+To jest teren, na którym MCP staje się znacznie bardziej przekonujący.
+
+Więc moim zdaniem prawdziwy błąd to próba wskazania jednego zwycięzcy w debacie, w której oba podejścia sprawdzają się na różnych warstwach.
+
+- **CLI** jest często właściwym interfejsem do lokalnego wykonywania.
+- **MCP** jest często właściwym interfejsem do scentralizowanego dostarczania funkcji.
+
+Z tej perspektywy obecna fala krytyki wygląda na znacznie mniej wnikliwą, niż się z początku wydaje.
+
+---
+
+## Przyszłość jest prawdopodobnie hybrydowa
+
+Nie wierzę, że przyszłość to *„wszystko staje się MCP"*.
+
+I nie wierzę też, że przyszłość to *„MCP znika i wszystko staje się CLI"*.
+
+Bardziej prawdopodobny scenariusz to **architektura warstwowa**.
+
+Dobre zespoły będą dalej używać lokalnych CLI tam, gdzie ma to sens - zwłaszcza przy znajomych narzędziach programistycznych i workflowach mocno obciążonych wykonywaniem.
+
+A jednocześnie sięgną po scentralizowane interfejsy tam, gdzie liczy się to organizacyjnie: bezpieczne współdzielone systemy, funkcje uwzględniające polityki, telemetria, wiedza wielokrotnego użytku i kontrola operacyjna.
+
+Samo wykonywanie w wielu miejscach zostanie lokalne.
+
+Ale governance, dostarczanie funkcji i wspólny kontekst będą się centralizować.
+
+Właśnie dlatego MCP wciąż ma znaczenie.
+
+Nie dlatego, że każde narzędzie trzeba owijać w protokół.
+Nie dlatego, że CLI są złe.
+Ale dlatego, że organizacje potrzebują niezawodnego sposobu dostarczania agentom funkcji kontrolowanych, obserwowalnych i zawsze aktualnych.
+
+Ten problem jest realny.
+
+A MCP wciąż jest jedną z najlepszych odpowiedzi, jakie mamy.
+
+---
+
+## Myśl na koniec
+
+> *„MCP umarł"* to dobry haczyk na media społecznościowe. To nie jest poważne myślenie o systemach.
+
+CLI jest przydatne. W wielu scenariuszach to właściwy wybór. Używam, lubię i zakładam, że zostanie kluczową częścią workflowów agentów.
+
+Ale gdy tylko wyjdziesz poza własną produktywność i zaczniesz budować systemy dla zespołów, prędzej czy później trafisz na inny zestaw ograniczeń. Liczy się bezpieczeństwo. Liczy się standaryzacja. Liczy się obserwowalność. Liczy się wspólna wiedza. Liczy się kontrola operacyjna.
+
+To jest moment, w którym lokalna wygoda przestaje być jedyną metryką.
+
+I to jest dokładnie miejsce, w którym MCP zaczyna wyglądać mniej jak hype, a bardziej jak **infrastruktura**.

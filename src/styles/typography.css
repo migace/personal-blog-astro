@@ -42,20 +42,20 @@ b {
 }
 
 a {
-  color: var(--color-blue);
+  color: var(--color-accent);
   text-decoration-thickness: 1px;
   text-underline-offset: 0.16em;
 }
 
 a:hover {
-  color: var(--color-blue-deep);
+  color: var(--color-accent-strong);
 }
 
 code {
   padding: 1px 6px;
   border-radius: var(--radius-sm);
-  background: rgba(var(--rgb-blue), 0.1);
-  color: var(--color-blue-deep);
+  background: rgba(var(--rgb-accent), 0.1);
+  color: var(--color-accent-strong);
   font-family: var(--font-mono);
   font-size: 0.92em;
 }
@@ -73,7 +73,7 @@ pre > code {
 blockquote {
   margin: var(--space-8) 0;
   padding: 0 0 0 var(--space-5, 1.25rem);
-  border-left: 4px solid var(--color-blue);
+  border-left: 4px solid var(--color-accent);
   color: var(--color-graphite);
   font-size: 1.18em;
   line-height: var(--leading-normal);

@@ -1,15 +1,23 @@
 ---
 import SocialLinks from "./SocialLinks.astro";
+import { useTranslations } from "../i18n/utils";
+import type { Lang } from "../i18n/ui";
 
+interface Props {
+  lang?: Lang;
+}
+
+const { lang = "en" } = Astro.props;
+const t = useTranslations(lang);
 const today = new Date();
 ---
 
 <footer>
   <div class="footer-inner">
     <div>
-      <p class="footer-kicker">Michał Gacek / Tiptopdesign</p>
+      <p class="eyebrow eyebrow--deep footer-kicker">{t("footer.kicker")}</p>
       <p class="footer-copy">
-        Full-stack AI consulting for business problems that need real execution.
+        {t("footer.copy")}
       </p>
     </div>
 
@@ -21,7 +29,7 @@ const today = new Date();
     </div>
 
     <p class="footer-legal">
-      &copy; {today.getFullYear()} Tiptopdesign. All rights reserved.
+      &copy; {today.getFullYear()} Tiptopdesign. {t("footer.rights")}
     </p>
   </div>
 </footer>
@@ -44,12 +52,7 @@ const today = new Date();
   }
 
   .footer-kicker {
-    margin: 0 0 var(--space-2);
-    color: var(--color-blue-deep);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
+    margin-bottom: var(--space-2);
   }
 
   .footer-copy {

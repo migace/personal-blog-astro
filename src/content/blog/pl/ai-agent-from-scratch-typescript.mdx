@@ -1,0 +1,579 @@
+---
+title: "Jak zbudowałem agenta AI od zera w TypeScript - bez frameworków, bez magii"
+description: "Dogłębne spojrzenie na budowę prawdziwego agenta AI od zera w TypeScript - bez LangChain, bez CrewAI, tylko pętla, API OpenAI i kilka małych bibliotek. Poznaj architekturę, decyzje i lekcje, które frameworki przed Tobą ukrywają."
+pubDate: "March 28 2026"
+heroImage: "../../../assets/heroes/ai-agent-from-scratch.webp"
+heroAlt: "Diagram architektury agenta AI w TypeScript zbudowanego bez frameworków"
+tags: ["AI Systems", "TypeScript"]
+lang: "pl"
+---
+
+*Dlaczego samodzielne napisanie pętli nauczy Cię o agentach AI więcej niż jakikolwiek tutorial o frameworkach.*
+
+---
+
+Przez ostatnie miesiące budowałem funkcje oparte na AI - od wewnętrznych narzędzi automatyzujących pracę developerów po agentów w produktach, którzy rozmawiają z prawdziwymi użytkownikami. I jedno szybko stało się jasne: większość tutoriali o "agentach AI" nie przygotowuje Cię do pracy w realnych warunkach.
+
+Albo chowają wszystko za frameworkami, więc nigdy nie widzisz, co naprawdę się dzieje, albo upraszczają problem do zabawkowego przykładu, który rozsypuje się w chwili, gdy dodasz drugie narzędzie.
+
+Postanowiłem więc zbudować agenta od zera - bez LangChain, bez CrewAI, bez frameworka do orkiestracji. Tylko TypeScript, API OpenAI i garść małych bibliotek do rzeczy, które nie są sednem (persystencja, spinnery, zmienne środowiskowe). Punktem wyjścia był kurs Scotta Mossa [Build an AI Agent from Scratch](https://frontendmasters.com/courses/ai-agents-v2/) na Frontend Masters - zacząłem od jego szkieletu projektu, a potem przebudowałem go i rozszerzyłem tak, żeby rozumieć każdą linię. Nie jako ćwiczenie do nauki, ale jako fundament, który umiem rozbudować, gdy coś pójdzie nie tak na produkcji.
+
+Wyszedł z tego agent CLI, który odbiera wiadomość w języku naturalnym, decyduje, czy musi sięgnąć po zewnętrzne narzędzia, wykonuje je i prowadzi rozumowanie aż do ostatecznej odpowiedzi. To jakieś 200 linii kodu, ale napisanie ich zmusiło mnie do zrozumienia rzeczy, które frameworki zwykle ukrywają: przepływu sterowania, granic narzędzi, pamięci i tego, jak agent się psuje.
+
+I jedno większość ludzi niepotrzebnie komplikuje:
+
+> **Agent to po prostu pętla.**
+>
+> Cała reszta - frameworki, warstwy orkiestracji, abstrakcje - stoi na tym jednym pomyśle. Jeśli rozumiesz pętlę, rozumiesz agentów.
+
+To teza całego artykułu. Pokażę Ci, o co chodzi.
+
+---
+
+## Przypadek użycia
+
+Scenariusz jest taki: użytkownik uruchamia komendę CLI w stylu:
+
+```bash
+npx tsx index.ts "Generate an image of a sunset over the ocean"
+```
+
+Pod spodem agent musi:
+
+<ol class="agent-flow">
+  <li>
+    <span class="agent-flow__title">Zapisać wiadomość użytkownika</span>
+    <span class="agent-flow__desc">w trwającej historii konwersacji.</span>
+  </li>
+  <li>
+    <span class="agent-flow__title">Wysłać pełną historię do LLM</span>
+    <span class="agent-flow__desc">razem z zestawem dostępnych narzędzi.</span>
+  </li>
+  <li>
+    <span class="agent-flow__title">Rozpoznać właściwe narzędzie</span>
+    <span class="agent-flow__desc">w tym przypadku narzędzie do generowania obrazów DALL-E.</span>
+  </li>
+  <li>
+    <span class="agent-flow__title">Wykonać wywołanie narzędzia</span>
+    <span class="agent-flow__desc">z dobrze przygotowanym promptem wyciągniętym z wiadomości.</span>
+  </li>
+  <li>
+    <span class="agent-flow__title">Przekazać wynik z powrotem</span>
+    <span class="agent-flow__desc">zwrócić URL obrazu do LLM jako output narzędzia.</span>
+  </li>
+  <li>
+    <span class="agent-flow__title">Ułożyć ostateczną odpowiedź</span>
+    <span class="agent-flow__desc">pozwolić LLM ująć ją w język naturalny.</span>
+  </li>
+  <li>
+    <span class="agent-flow__title">Wypisać ją w terminalu</span>
+    <span class="agent-flow__desc">zamknąć pętlę z użytkownikiem.</span>
+  </li>
+</ol>
+
+<style>{`
+  .agent-flow {
+    list-style: none;
+    counter-reset: agentstep;
+    padding: 0;
+    margin: 1.75em 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+  }
+  .agent-flow li {
+    counter-increment: agentstep;
+    position: relative;
+    padding: 0.85rem 0.95rem 0.85rem 2.6rem;
+    border: 1px solid rgba(37, 99, 235, 0.18);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0) 100%);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .agent-flow li:hover {
+    border-color: rgba(37, 99, 235, 0.45);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(37, 99, 235, 0.1);
+  }
+  .agent-flow li::before {
+    content: counter(agentstep);
+    position: absolute;
+    left: 0.7rem;
+    top: 0.85rem;
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--color-on-accent);
+    font-size: 0.78rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset;
+  }
+  .agent-flow__title {
+    font-weight: 700;
+    color: rgb(var(--gray-dark));
+    font-size: 0.96rem;
+    line-height: 1.25;
+  }
+  .agent-flow__desc {
+    color: rgb(var(--gray));
+    font-size: 0.86rem;
+    line-height: 1.4;
+  }
+  @media (max-width: 640px) {
+    .agent-flow {
+      grid-template-columns: 1fr;
+    }
+  }
+`}</style>
+
+To nie jest trywialne, bo agent nie tylko wywołuje funkcję - on *decyduje* się ją wywołać. LLM działa jak silnik rozumowania: wybiera, które narzędzie uruchomić (jeśli w ogóle), interpretuje wynik i potrafi przejść przez kilka pętli, zanim ustali ostateczną odpowiedź. To fundamentalna różnica między chatbotem a agentem.
+
+Z perspektywy produktu ten wzorzec jest wszędzie: boty do obsługi klienta sprawdzające zamówienia, asystenci do kodowania uruchamiający testy, agenci badawczy odpytujący wiele API. Pętla rozumowania wspomaganego narzędziami to kręgosłup każdego z nich.
+
+---
+
+## Co budujemy
+
+Agent działa według prostego, ale mocnego przepływu:
+
+```
+User message
+    ↓
+┌─────────────────────────────────────┐
+│           AGENT LOOP                │
+│                                     │
+│  Load history → Call LLM → Check:   │
+│    ├─ Text response? → Return it    │
+│    └─ Tool call? → Execute tool     │
+│         ↓                           │
+│    Append result → Loop again       │
+│                                     │
+│  (max 20 iterations)                │
+└─────────────────────────────────────┘
+    ↓
+Final response printed to terminal
+```
+
+**Wejście:** String z linii poleceń - dowolna wiadomość w języku naturalnym.
+
+**Przetwarzanie:** Iteracyjna pętla, w której LLM analizuje wiadomość, opcjonalnie wywołuje narzędzia i dopracowuje odpowiedź na podstawie outputów narzędzi.
+
+**Wyjście:** Ostateczna odpowiedź tekstowa od LLM, wypisana na stdout.
+
+Cały system to jakieś 200 linii TypeScriptu w 10 plikach. Bez kontenerów do wstrzykiwania zależności, bez rejestrów pluginów, bez konfiguracji w YAML. Po prostu funkcje wywołujące funkcje.
+
+---
+
+## Implementacja krok po kroku
+
+### Krok 1 - Konfiguracja projektu i punkt wejścia
+
+Stack jest celowo minimalny:
+
+| Biblioteka | Po co |
+|---------|---------|
+| `openai` | Wywołania LLM i generowanie obrazów DALL-E |
+| `zod` | Walidowane w runtime schematy parametrów narzędzi |
+| `lowdb` | Persystencja historii konwersacji w pliku JSON |
+| `ora` | Spinner w terminalu dla lepszego UX |
+| `dotenv` | Ładowanie zmiennych środowiskowych |
+| `uuid` | Unikalne ID zapisanych wiadomości |
+
+Punktem wejścia jest `index.ts` - i jest celowo nudny:
+
+```typescript
+import 'dotenv/config'
+import { runAgent } from './src/agent'
+import { tools } from './src/tools'
+import { clearMessages } from './src/memory'
+
+const arg = process.argv[2]
+
+if (arg === '--clear') {
+  await clearMessages()
+  console.log('Conversation history cleared.')
+  process.exit(0)
+}
+
+if (!arg) {
+  console.error('Usage: npx tsx index.ts "<message>" | --clear')
+  process.exit(1)
+}
+
+const response = await runAgent({ userMessage: arg, tools })
+console.log(response)
+```
+
+Ten plik robi dokładnie trzy rzeczy: ładuje zmienne środowiskowe, parsuje argument CLI i przekazuje wszystko do `runAgent`. Jedna decyzja projektowa warta podkreślenia: tablicę `tools` importujemy i przekazujemy do `runAgent` jawnie. Agent nie odkrywa swoich narzędzi sam ani nie ładuje ich z pliku konfiguracyjnego. Dzięki temu graf zależności jest oczywisty i łatwy do przetestowania. Czytając jeden import, widzisz dokładnie, co agent potrafi.
+
+---
+
+### Krok 2 - System typów
+
+Zanim wejdziemy w logikę agenta, spójrzmy na typy, które spinają wszystko razem (`types.ts`):
+
+```typescript
+import type OpenAI from 'openai'
+import type { z } from 'zod'
+
+export type AIMessage =
+  | OpenAI.Chat.Completions.ChatCompletionAssistantMessageParam
+  | { role: 'user'; content: string }
+  | { role: 'tool'; content: string; tool_call_id: string }
+
+export interface ToolFn<A = unknown, T = unknown> {
+  (input: { userMessage: string; toolArgs: A }): Promise<T>
+}
+
+export interface ToolDefinition {
+  name: string
+  description: string
+  parameters: z.ZodObject<z.ZodRawShape>
+}
+```
+
+`AIMessage` to discriminated union obejmujący trzy typy wiadomości w konwersacji OpenAI: wiadomości asystenta (które mogą zawierać wywołania narzędzi), wiadomości użytkownika i wiadomości z wynikami narzędzi. Ten jeden typ przepływa przez cały system - od zapisu w pamięci po wejście do LLM.
+
+`ToolDefinition` łączy nazwę i opis ze schematem Zod dla parametrów. Schemat Zod robi tu podwójną robotę: waliduje argumenty w runtime *oraz* zostaje przekonwertowany na JSON Schema, którego oczekuje API function calling OpenAI. Jeden schemat, dwa cele - i żadnego rozjazdu między tym, co widzi LLM, a tym, czego pilnuje kod.
+
+---
+
+### Krok 3 - Rdzeń pętli agenta
+
+To serce całego systemu - plik, który robi z niego *agenta*, a nie zwykłego chatbota (`src/agent.ts`):
+
+```typescript
+import type { ToolDefinition } from '../types'
+import { runLLM } from './llm'
+import { addMessages, getMessages } from './memory'
+import { runTool } from './toolRunner'
+import { showLoader } from './ui'
+
+const MAX_ITERATIONS = 20
+
+export const runAgent = async ({ userMessage, tools }: AgentParams) => {
+  await addMessages([{ role: 'user', content: userMessage }])
+
+  const loader = showLoader('🤔')
+  let iterations = 0
+
+  while (iterations < MAX_ITERATIONS) {
+    iterations++
+
+    const history = await getMessages()
+    const response = await runLLM({ messages: history, tools })
+    await addMessages([response])
+
+    if (response.content) {
+      loader.stop()
+      return response.content
+    }
+
+    if (response.tool_calls) {
+      for (const toolCall of response.tool_calls) {
+        loader.update(`🔧 Running ${toolCall.function.name}...`)
+
+        try {
+          const result = await runTool(toolCall, userMessage)
+          await addMessages([
+            { role: 'tool', content: result, tool_call_id: toolCall.id },
+          ])
+          loader.succeed(`✅ ${toolCall.function.name} completed`)
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : 'Unknown error'
+          await addMessages([
+            {
+              role: 'tool',
+              content: `Error: ${errorMessage}`,
+              tool_call_id: toolCall.id,
+            },
+          ])
+          loader.fail(`❌ ${toolCall.function.name} failed: ${errorMessage}`)
+        }
+      }
+
+      continue
+    }
+
+    loader.stop()
+    return 'No response from the model.'
+  }
+
+  loader.stop()
+  return 'Max iterations reached. Please try again.'
+}
+```
+
+Rozłóżmy na części krytyczne decyzje zaszyte w tym kodzie.
+
+**Struktura pętli.** Pętla `while` z licznikiem to najprostsza możliwa wersja cyklu myśl-działaj-obserwuj. Każda iteracja: załaduj pełną historię → zapytaj LLM → sprawdź, co zwrócił. Zwrócił tekst - koniec. Zwrócił wywołania narzędzi - wykonaj je i wróć na początek pętli. Ten sam wzorzec implementują `AgentExecutor` z LangChain, AutoGPT i każdy inny framework do agentów - tylko bez warstw abstrakcji.
+
+**Zapis przed rozumowaniem.** Wiadomość użytkownika trafia do bazy *przed* startem pętli. Każda odpowiedź asystenta i każdy wynik narzędzia też zapisują się od razu. Dzięki temu, jeśli proces padnie w środku pętli, nie tracisz konwersacji. I dlatego kolejne uruchomienie podejmuje pracę tam, gdzie skończyło poprzednie - agent z założenia ma pamięć między sesjami.
+
+**Błąd jako część konwersacji.** Gdy narzędzie rzuci wyjątek, komunikat błędu pakujemy w wiadomość `role: 'tool'` i oddajemy z powrotem do LLM. Agent się nie wywala - mówi modelowi "to narzędzie zawiodło" i pozwala mu zdecydować, co dalej. To kluczowy wzorzec: **błędy to dane, a nie wyjątki**.
+
+**Limit iteracji.** `MAX_ITERATIONS = 20` to zabezpieczenie. Bez niego zdezorientowany model mógłby kręcić się w nieskończoność - wywoływać narzędzia zwracające nieprzydatne wyniki, a potem wywoływać je znowu. Dwadzieścia iteracji to z zapasem dość na złożone workflowy z wieloma narzędziami, a jednocześnie chroni przed wymykającymi się spod kontroli kosztami API.
+
+**Trzecia ścieżka wyjścia.** Jeśli odpowiedź nie ma ani `content`, ani `tool_calls`, stało się coś nieoczekiwanego. Zamiast rzucać wyjątek, agent zwraca czytelny komunikat. Programowanie defensywne ma znaczenie, gdy Twój przepływ sterowania zależy od outputu LLM.
+
+---
+
+### Krok 4 - Warstwa LLM
+
+`src/llm.ts` to miejsce, w którym agent rozmawia z OpenAI:
+
+```typescript
+import { zodFunction } from 'openai/helpers/zod'
+import type { AIMessage, ToolDefinition } from '../types'
+import { openai } from './ai'
+import { systemPrompt } from './systemPrompt'
+
+export const runLLM = async ({ messages, tools }: LLMParams) => {
+  const formattedTools = tools.map(zodFunction)
+  const response = await openai.chat.completions.create({
+    model: 'gpt-5-nano',
+    messages: [{ role: 'system', content: systemPrompt }, ...messages],
+    tools: formattedTools,
+    tool_choice: 'auto',
+    parallel_tool_calls: false,
+  })
+
+  return response.choices[0].message
+}
+```
+
+Kilka rzeczy wartych odnotowania:
+
+**`zodFunction` wykonuje tu całą ciężką robotę.** Helper OpenAI bierze schemat Zod i konwertuje go na format JSON Schema, którego oczekuje API function calling. Autorzy narzędzi definiują parametry raz w Zod i dostają za darmo jedno i drugie: walidację w runtime oraz schematy zgodne z API.
+
+**`tool_choice: 'auto'`** pozwala modelowi samemu zdecydować, czy wywołać narzędzie, czy odpowiedzieć wprost. Nie każda wiadomość potrzebuje narzędzia - czasem użytkownik po prostu mówi "dzięki", a agent powinien odpowiedzieć naturalnie.
+
+**`parallel_tool_calls: false`** to celowe ograniczenie. API OpenAI potrafi zwrócić kilka wywołań narzędzi w jednej odpowiedzi, ale to wyłączyłem. Dlaczego? Bo pętla agenta przetwarza wywołania narzędzi sekwencyjnie, a równoległe wykonanie wymagałoby obsługi współbieżności, radzenia sobie z race conditions na historii wiadomości i bardziej złożonego odzyskiwania po błędach. Sekwencyjnie to właściwy default. Równoległość zawsze dodasz później, gdy naprawdę będzie potrzebna.
+
+System prompt jest minimalny i przemyślany:
+
+```typescript
+export const systemPrompt = `You are a helpful AI assistant with access to tools. 
+When a user asks you something, decide whether to use a tool or respond directly.
+If you use a tool, explain what you found based on the tool's output.
+Always be concise and helpful.`
+```
+
+Cztery zdania wystarczą. Większość wskazówek co do zachowania niosą opisy narzędzi (osadzone w schematach Zod). System prompt tylko nadaje ton.
+
+---
+
+### Krok 5 - Narzędzia: definicja i wykonanie
+
+Każde narzędzie to samodzielny moduł w `src/tools/` z dwoma eksportami: definicją i funkcją. Oto narzędzie do generowania obrazów:
+
+```typescript
+import { z } from 'zod'
+import type { ToolFn } from '../../types'
+import { openai } from '../ai'
+
+export const generateImageToolDefinition = {
+  name: 'generate_image',
+  description: 'use this tool to generate an image',
+  parameters: z.object({
+    prompt: z
+      .string()
+      .describe(
+        "The prompt to generate an image. Be sure to consider the user's original message when making the prompt.",
+      ),
+    reasoning: z.string().describe('the reasoning for using this tool'),
+  }),
+}
+
+type Args = z.infer<typeof generateImageToolDefinition.parameters>
+
+export const generateImage: ToolFn<Args, string> = async ({ toolArgs }) => {
+  const response = await openai.images.generate({
+    model: 'dall-e-3',
+    prompt: toolArgs.prompt,
+    n: 1,
+    size: '1024x1024',
+  })
+
+  const url = response.data[0]?.url
+  if (!url) throw new Error('Image generation failed: no URL returned')
+
+  return url
+}
+```
+
+Jest tu subtelny, ale ważny wzorzec: parametr `reasoning`. Każde narzędzie wymaga, żeby LLM wyjaśnił, *dlaczego* go używa. Na samo wykonanie nie ma to wpływu - string z uzasadnieniem nigdy nie trafia do ciała funkcji. Ale zmusza model do nazwania swojej decyzji przed działaniem, co poprawia trafność doboru narzędzi. To lekka forma chain-of-thought promptingu wbudowana wprost w schemat narzędzia.
+
+Rozdzielaniem wywołań narzędzi zajmuje się centralny router - `src/toolRunner.ts`:
+
+```typescript
+export const runTool = async (
+  toolCall: OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
+  userMessage: string,
+): Promise<string> => {
+  const input = {
+    userMessage,
+    toolArgs: JSON.parse(toolCall.function.arguments || '{}'),
+  }
+
+  switch (toolCall.function.name) {
+    case generateImageToolDefinition.name:
+      return generateImage(input)
+    case redditToolDefinition.name:
+      return reddit(input)
+    case dadJokeToolDefinition.name:
+      return dadJoke(input)
+    default:
+      throw new Error(`Unknown tool: ${toolCall.function.name}`)
+  }
+}
+```
+
+Tak, to zwykły switch. Nie wzorzec rejestru, nie system pluginów, nie auto-discovery oparte na dekoratorach. Zwykły switch. Dla trzech narzędzi to właściwy poziom abstrakcji. Dodanie nowego narzędzia to dodanie jednego case'a. Gdy uzbiera Ci się 30 narzędzi, przepiszesz to na mapę. Do tego czasu wygrywa prostota.
+
+---
+
+### Krok 6 - Pamięć i persystencja
+
+`src/memory.ts` obsługuje stan konwersacji:
+
+```typescript
+import { JSONFilePreset } from 'lowdb/node'
+import { v4 as uuidv4 } from 'uuid'
+import type { AIMessage } from '../types'
+
+export const addMessages = async (messages: AIMessage[]) => {
+  const db = await getDb()
+  const messagesWithMetadata = messages.map(addMetadata)
+  db.data.messages.push(...messagesWithMetadata)
+  await db.write()
+}
+
+export const getMessages = async () => {
+  const db = await getDb()
+  return db.data.messages.map(removeMetadata)
+}
+```
+
+Warstwa pamięci dokłada do każdej wiadomości metadane `id` i `createdAt` - na potrzeby debugowania i audytu - a potem usuwa je przed wysyłką do LLM. API OpenAI tych pól nie zna i by je odrzuciło, więc `removeMetadata` pilnuje czystego rozdziału między tym, co przechowujemy, a tym, co wysyłamy.
+
+To najprostsza możliwa implementacja pamięci: zapisuj wszystko, odtwarzaj wszystko. LLM dostaje pełną historię konwersacji w każdej turze. Dla narzędzia CLI to działa w zupełności. Dla agenta produkcyjnego obsługującego tysiące wiadomości potrzebowałbyś podsumowań, przesuwnego okna albo wyszukiwania po wektorach. Ale zaczynając od "po prostu odtwarzaj wszystko", weryfikujesz rdzeń pętli, zanim ruszysz optymalizować.
+
+---
+
+## Kluczowe decyzje inżynierskie
+
+### Dlaczego bez frameworka?
+
+Frameworki takie jak LangChain dają abstrakcje dla łańcuchów, agentów, pamięci i narzędzi. Ale abstrakcja ma swoją cenę: gdy coś się psuje, debugujesz framework, a nie swoją logikę. Do nauki - i do małych, wyspecjalizowanych agentów - ten narzut się nie opłaca. Każda linia w tym kodzie robi coś, co umiem wyjaśnić. I o to chodzi.
+
+### Dlaczego sekwencyjne wywołania narzędzi?
+
+`parallel_tool_calls: false` oznacza, że model może poprosić o jedno narzędzie na turę. To upraszcza pętlę (żadnego `Promise.all`, żadnej obsługi częściowych awarii) i sprawia, że historia konwersacji jest liniowa i łatwa do debugowania. Kosztem jest opóźnienie: jeśli model potrzebuje dwóch narzędzi, robi dwie rundy. Dla tego przypadku użycia to akceptowalne.
+
+### Dlaczego plik JSON zamiast prawdziwej bazy?
+
+LowDB zapisuje do zwykłego pliku JSON. Nie jest bezpieczny dla współbieżności, nie skaluje się i ładuje wszystko do pamięci. Ale jest zero-config, czytelny dla człowieka (otwierasz `db.json` i widzisz dokładnie, co się stało) i idealny do jednoużytkownikowego narzędzia CLI. Interfejs pamięci (`addMessages`, `getMessages`, `clearMessages`) jest na tyle abstrakcyjny, że późniejsza podmiana na Postgresa czy Redisa to zmiana jednego pliku.
+
+### Czego celowo NIE zaimplementowałem
+
+- **Streamingu.** Agent czeka na kompletne odpowiedzi. Streaming poprawiłby odczuwalne opóźnienie, ale komplikuje wykrywanie wywołań narzędzi.
+- **Orkiestracji wielu agentów.** Jest jeden agent, jedna pętla. Żadnego agenta-plannera delegującego do wyspecjalizowanych agentów.
+- **Ponawiania wywołań LLM.** Jeśli OpenAI zwróci 500, agent się wywala. Na produkcji chciałbyś wykładniczego backoffu.
+- **Liczenia tokenów.** Pełna historia leci w każdej turze, bez oglądania się na limity okna kontekstowego. Przy długich konwersacjach potrzebowałbyś obcinania albo podsumowań.
+
+---
+
+## Co zrobiłem źle / co bym poprawił
+
+**Tool runner powinien być mapą, a nie switchem.** Nawet przy trzech narzędziach switch w `toolRunner.ts` to code smell. Każde nowe narzędzie wymusza edycję dwóch plików. Mapa `Record<string, ToolFn>` pozwoliłaby narzędziom rejestrować się samym i zmniejszyłaby pole do pomyłek.
+
+**System prompt jest zbyt ogólny.** Cztery zdania działają na demo, ale agent produkcyjny potrzebuje więcej: preferencji co do formatu outputu, instrukcji obsługi błędów, kalibracji tonu.
+
+**Brak walidacji argumentów narzędzi.** Schematy Zod definiują oczekiwany kształt, ale `toolRunner.ts` robi surowy `JSON.parse` bez sprawdzenia go względem schematu. Jeśli LLM zwróci źle uformowane argumenty (rzadko, ale jednak), narzędzie dostaje śmieci na wejściu. Powinienem wołać `.parse()` na schemacie Zod, zanim przekażę argumenty do funkcji narzędzia.
+
+**Pamięć rośnie bez ograniczeń.** Każda wiadomość zostaje na zawsze. Po długiej sesji wysyłasz do LLM tysiące tokenów w każdej turze - w większości nieistotnych.
+
+**Brak obserwowalności.** Poza spinnerem w terminalu nie ma żadnego logowania. Na produkcji chciałbym ustrukturyzowanych logów dla każdego wywołania LLM (zużyte tokeny, opóźnienie, odpowiedź modelu), każdego wykonania narzędzia (czas, sukces albo porażka) i każdej iteracji pętli. Nie poprawisz tego, czego nie mierzysz.
+
+---
+
+## Krótki przykład z życia
+
+Pokażę to na czymś konkretnym, co wydarzyło się ostatnio.
+
+Przeglądałem output funkcji opartej na AI w jednym z moich projektów - agenta wspomaganego narzędziami, podobnego do tego tutaj, ale wpiętego w workflow produktu. Agent miał pobrać dane z API, sprawdzić je względem reguł biznesowych i zwrócić ustrukturyzowaną odpowiedź.
+
+Działało. Technicznie. Dane były poprawne, odpowiedź ładnie sformatowana. Ale output był dobry, choć droga do niego zła: agent wybrał wolniejszy, droższy endpoint zamiast tego z cache, bo nic w opisie narzędzia nie mówiło modelowi, że koszt też powinien ważyć przy decyzji.
+
+Wtedy coś do mnie dotarło:
+
+**W agentach AI nie chodzi tylko o generowanie poprawnych outputów - chodzi o podejmowanie dobrych decyzji wewnątrz systemu.** A te decyzje są tylko tak dobre, jak kontekst, który dasz modelowi. Mglisty opis narzędzia to nie tylko niechlujstwo - to wyciek kosztów na produkcji.
+
+Dlatego mam obsesję na punkcie stringów `.describe()` w schematach Zod. Dlatego w każdym narzędziu w tym repo siedzi parametr `reasoning`. To nie są akademickie wybory - biorą się z patrzenia, jak agenci popełniają kosztowne błędy w realnych systemach.
+
+Zrozumienie pętli liczy się bardziej niż używanie frameworka, bo to w pętli widać te problemy. Frameworki je ukrywają.
+
+---
+
+## Jak to przekłada się na realne produkty
+
+Widziałem ten sam wzorzec w wielu produktach - od wewnętrznych narzędzi po funkcje AI skierowane do klientów. Niezależnie od domeny architektura zbiega się do tej samej pętli. Zmieniają się tylko narzędzia i prompty.
+
+**Boty do obsługi klienta.** Zamień narzędzie z sucharami na narzędzie do wyszukiwania zamówień i narzędzie do obsługi zwrotów. Pętla agenta prowadzi przepływ konwersacji; narzędzia robią logikę biznesową.
+
+**Wewnętrzne narzędzia dla developerów.** Agent, który potrafi odpytać Twoją bazę danych, sprawdzić status CI i wrzucić wiadomość na Slacku. Każda taka zdolność to jedno narzędzie. LLM decyduje, których użyć, na podstawie żądania developera w języku naturalnym. To jedno z zastosowań o najwyższym ROI, jakie widziałem - developerzy dostają interfejs w języku naturalnym do własnej infrastruktury.
+
+**Pipeline'y do generowania treści.** Agent, który bada temat (narzędzie do wyszukiwania w sieci), pisze szkic (odpowiedź LLM), tworzy do tego obrazy (narzędzie DALL-E) i formatuje output. Iteracyjna pętla pozwala mu dopracowywać pracę przez kilka przejść.
+
+**Asystenci do analizy danych.** Narzędzia odpytujące API, uruchamiające SQL albo przetwarzające pliki CSV. Agent pobiera dane, LLM je interpretuje, a użytkownik dostaje wnioski w języku naturalnym.
+
+Kluczowy wniosek dla zespołów produktowych: **pętla agenta jest generyczna; Twoja wartość biznesowa mieszka w narzędziach.** Nie musisz przebudowywać warstwy orkiestracji do każdego przypadku użycia. Gdy pętla jest stabilna, większość przewagi produktowej bierze się z lepszych narzędzi, ostrzejszych opisów i mocniejszych zabezpieczeń.
+
+---
+
+## Czego nauczyłem się o agentach AI
+
+> Jeśli masz zrozumieć o agentach AI jedną rzecz, niech to będzie ta:
+>
+> **Agent to po prostu pętla.**
+>
+> Pętla while, która woła LLM, sprawdza, czy chce on coś zrobić, robi to i powtarza. To wszystko. Cała reszta - każdy framework, każda warstwa orkiestracji, każda "platforma agentowego AI" - stoi na tym.
+
+Ciągle do tego wracam, bo to przestawia każdą decyzję. Gdy ktoś pyta "LangChain czy CrewAI?", prawdziwe pytanie brzmi: "czy rozumiem pętlę na tyle dobrze, żeby wiedzieć, co te frameworki robią za mnie?". Jeśli nie - framework staje się czarną skrzynką, a w czarnych skrzynkach chowają się produkcyjne bugi.
+
+**Opisy narzędzi liczą się bardziej niż system prompty.** Na pisanie stringów `.describe()` w Zod zszedł mi większy czas niż na system prompt. Model czyta opisy narzędzi, gdy wybiera, które wywołać - mgliste opisy prowadzą do błędnego doboru.
+
+**Błędy powinny przepływać przez konwersację, a nie zabijać procesu.** Gdy narzędzie zawiedzie, najgorsze, co możesz zrobić, to rzucić nieobsłużony wyjątek. Oddaj błąd do LLM jako wiadomość narzędzia. Model jest zaskakująco dobry w wychodzeniu z takich sytuacji.
+
+**Persystencja nie jest opcjonalna.** Nawet przy narzędziu CLI zapis historii konwersacji odmienił debugowanie. Zamiast ponawiać prompty, mogłem zajrzeć do `db.json` i zobaczyć dokładnie, co model dostał i zwrócił na każdym kroku. Traktuj historię wiadomości jak log audytowy.
+
+**Zacznij bez równoległości.** Sekwencyjne wykonanie narzędzi jest łatwiejsze do ogarnięcia, łatwiejsze do debugowania i wystarcza w większości przypadków. Równoległość dodaj, gdy masz dane z profilowania, które dowodzą, że jej potrzebujesz - nie wcześniej.
+
+---
+
+## Podsumowanie
+
+Większość developerów zaczyna od frameworków. Instalują LangChain, idą za quickstartem, w 20 minut mają działające demo i czują się produktywni.
+
+Powiem tak: zrób na odwrót.
+
+Najpierw zbuduj pętlę sam. Poczuj jej krawędzie - dziwne przypadki, gdy model nie zwraca ani treści, ani wywołań narzędzi; moment, w którym łapiesz się na tym, że nieograniczona pamięć po cichu zjada Twój budżet tokenów; pierwszy raz, gdy narzędzie zawodzi i musisz zdecydować, czy się wywalić, czy podnieść.
+
+To te momenty uczą Cię architektury agentów. Nie abstrakcje. Nie konfiguracje w YAML. Goła pętla.
+
+Gdy ją zrozumiesz - *naprawdę* zrozumiesz - frameworki staną się narzędziem, a nie kulą. Będziesz wiedział, co robi `AgentExecutor` z LangChain, bo napisałeś własny. Będziesz wiedział, kiedy sięgnąć po CrewAI, a kiedy to przerost formy, bo na własnej skórze poczułeś granice pętli pojedynczego agenta.
+
+I to jest różnica między używaniem AI a realnym budowaniem go po inżyniersku.
+
+Kod jest celowo minimalny - jakieś 200 linii w 10 plikach. Sforkuj go, dodaj narzędzie, zepsuj coś, napraw. Tak właśnie się nauczyłem. Ty nauczysz się tak samo.
+
+Repozytorium na Githubie: [https://github.com/migace/agent-ai-v1](https://github.com/migace/agent-ai-v1)

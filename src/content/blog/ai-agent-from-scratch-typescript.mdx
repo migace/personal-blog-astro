@@ -2,10 +2,8 @@
 title: "How I Built an AI Agent From Scratch in TypeScript - No Frameworks, No Magic"
 description: "A deep dive into building a real AI agent from scratch in TypeScript - no LangChain, no CrewAI, just a loop, the OpenAI API, and a few small libraries. Learn the architecture, the decisions, and the lessons that frameworks hide from you."
 pubDate: "March 28 2026"
-heroImage: "/ai-agent-from-scratch.webp"
+heroImage: "../../assets/heroes/ai-agent-from-scratch.webp"
 heroAlt: "Architecture diagram for a TypeScript AI agent built without frameworks"
-heroWidth: 1400
-heroHeight: 764
 tags: ["AI Systems", "TypeScript"]
 ---
 
@@ -17,7 +15,7 @@ Over the last months, I've been building AI-powered features - from internal too
 
 They either hide everything behind frameworks so you never learn what's actually happening, or oversimplify the problem to a toy example that falls apart the moment you add a second tool.
 
-So I decided to build an agent from scratch - no LangChain, no CrewAI, no orchestration framework. Just TypeScript, the OpenAI API, and a handful of small libraries for things that aren't the point (persistence, spinners, env vars). Not as a learning exercise. As a foundation I can actually reason about and extend when things go wrong in production.
+So I decided to build an agent from scratch - no LangChain, no CrewAI, no orchestration framework. Just TypeScript, the OpenAI API, and a handful of small libraries for things that aren't the point (persistence, spinners, env vars). The starting point was Scott Moss's [Build an AI Agent from Scratch](https://frontendmasters.com/courses/ai-agents-v2/) course on Frontend Masters - I followed its project skeleton, then rebuilt and extended it until I could reason about every line. Not as a learning exercise. As a foundation I can actually extend when things go wrong in production.
 
 The result is a CLI agent that receives a natural language message, decides whether it needs to call external tools, executes them, and keeps reasoning until it has a final answer. It's ~200 lines of code, but writing it forced me to understand the parts frameworks usually hide: control flow, tool boundaries, memory, and failure modes.
 
@@ -108,7 +106,7 @@ Behind the scenes, the agent needs to:
     height: 1.55rem;
     border-radius: 50%;
     background: var(--accent);
-    color: #fff;
+    color: var(--color-on-accent);
     font-size: 0.78rem;
     font-weight: 700;
     display: inline-flex;
@@ -117,7 +115,7 @@ Behind the scenes, the agent needs to:
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset;
   }
   .agent-flow__title {
-    font-weight: 600;
+    font-weight: 700;
     color: rgb(var(--gray-dark));
     font-size: 0.96rem;
     line-height: 1.25;

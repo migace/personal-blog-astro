@@ -7,7 +7,11 @@
     "start": "astro dev",
     "build": "astro check && astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "vitest run",
+    "og": "node scripts/generate-og.mjs",
+    "csp:hashes": "node scripts/csp-hashes.mjs",
+    "format": "prettier --write src"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.9",
@@ -18,6 +22,7 @@
     "@astrojs/vercel": "^10.0.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vercel/analytics": "^2.0.1",
     "astro": "^6.2.2",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
@@ -37,5 +42,11 @@
       "picomatch@<2.3.2": "^2.3.2",
       "yaml@>=2.0.0 <2.8.3": "^2.8.3"
     }
+  },
+  "devDependencies": {
+    "prettier": "^3.9.4",
+    "prettier-plugin-astro": "^0.14.1",
+    "sharp": "^0.34.5",
+    "vitest": "^4.1.10"
   }
 }

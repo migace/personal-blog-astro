@@ -1,13 +1,15 @@
 ---
 import SocialLinks from "./SocialLinks.astro";
+import { localizePath, servicesPath, useTranslations } from "../i18n/utils";
+import type { Lang } from "../i18n/ui";
 
 interface PostLink {
-  slug: string;
+  url: string;
   title: string;
 }
 
 interface RelatedPost {
-  slug: string;
+  url: string;
   title: string;
   description: string;
 }
@@ -16,21 +18,25 @@ interface Props {
   prevPost?: PostLink;
   nextPost?: PostLink;
   relatedPosts?: RelatedPost[];
+  lang?: Lang;
 }
 
-const { prevPost, nextPost, relatedPosts = [] } = Astro.props;
+const { prevPost, nextPost, relatedPosts = [], lang = "en" } = Astro.props;
+const t = useTranslations(lang);
+const contactHref = localizePath("/contact/", lang);
+const servicesHref = servicesPath(lang);
 ---
 
 {
   relatedPosts.length > 0 && (
     <section class="post-related" aria-labelledby="post-related-title">
       <h2 id="post-related-title" class="post-related__title">
-        Related articles
+        {t("post.related")}
       </h2>
       <ul class="post-related__list">
         {relatedPosts.map((post) => (
           <li>
-            <a class="post-related__card card card--proof" href={`/blog/${post.slug}/`}>
+            <a class="post-related__card card card--proof" href={post.url}>
               <span class="post-related__name">{post.title}</span>
               <span class="post-related__desc">{post.description}</span>
             </a>
@@ -42,24 +48,25 @@ const { prevPost, nextPost, relatedPosts = [] } = Astro.props;
 }
 
 <aside class="post-cta card card--interactive" aria-labelledby="post-cta-title">
+  <img
+    class="post-cta__avatar"
+    src="/michal-gacek.webp"
+    alt=""
+    width="96"
+    height="96"
+    loading="lazy"
+    decoding="async"
+  />
   <div class="post-cta__copy">
-    <p class="eyebrow">Work with the author</p>
-    <h2 id="post-cta-title">Michał Gacek - full-stack & AI consulting</h2>
-    <p>
-      I help founders and product teams turn complex workflows and AI ideas
-      into maintainable systems that reach production. If this post maps to a
-      problem you are facing, describe it in two sentences and I will reply
-      within 24 hours.
-    </p>
+    <p class="eyebrow">{t("cta.eyebrow")}</p>
+    <h2 id="post-cta-title">{t("cta.title")}</h2>
+    <p>{t("cta.body")}</p>
     <div class="post-cta__actions">
-      <a
-        class="button button--primary"
-        href="/contact/"
-      >
-        Discuss a project problem
+      <a class="button button--primary" href={contactHref}>
+        {t("cta.primary")}
       </a>
-      <a class="button button--secondary" href="/#services">
-        See how I work
+      <a class="button button--secondary" href={servicesHref}>
+        {t("cta.secondary")}
       </a>
     </div>
     <div class="post-cta__social">
@@ -68,20 +75,55 @@ const { prevPost, nextPost, relatedPosts = [] } = Astro.props;
   </div>
 </aside>
 
+<aside class="post-newsletter card card--interactive" aria-labelledby="post-newsletter-title">
+  <div class="post-newsletter__copy">
+    <p class="eyebrow">{t("newsletter.eyebrow")}</p>
+    <h2 id="post-newsletter-title">{t("newsletter.title")}</h2>
+    <p>{t("newsletter.body")}</p>
+  </div>
+  <form
+    class="post-newsletter__form"
+    data-newsletter
+    data-msg-success={t("newsletter.success")}
+    data-msg-invalid={t("newsletter.invalid")}
+    data-msg-error={t("newsletter.error")}
+    novalidate
+  >
+    <div class="post-newsletter__row">
+      <label class="sr-only" for="newsletter-email">{t("newsletter.emailLabel")}</label>
+      <input
+        id="newsletter-email"
+        name="email"
+        type="email"
+        required
+        placeholder={t("newsletter.placeholder")}
+        autocomplete="email"
+      />
+      <button class="button button--primary" type="submit">{t("newsletter.button")}</button>
+    </div>
+    <div class="post-newsletter__extra">
+      <label for="newsletter-extra">{t("newsletter.honeypot")}</label>
+      <input id="newsletter-extra" name="newsletter_extra" type="text" tabindex="-1" autocomplete="off" />
+    </div>
+    <p class="post-newsletter__note">{t("newsletter.note")}</p>
+    <p class="post-newsletter__status" role="status" aria-live="polite"></p>
+  </form>
+</aside>
+
 {
   (prevPost || nextPost) && (
-    <nav class="post-nav" aria-label="More articles">
+    <nav class="post-nav" aria-label={t("post.moreArticles")}>
       {prevPost ? (
-        <a class="post-nav__link post-nav__link--prev card card--proof" href={`/blog/${prevPost.slug}/`}>
-          <span class="post-nav__dir">← Previous</span>
+        <a class="post-nav__link post-nav__link--prev card card--proof" href={prevPost.url}>
+          <span class="post-nav__dir">← {t("post.prev")}</span>
           <span class="post-nav__title">{prevPost.title}</span>
         </a>
       ) : (
         <span class="post-nav__spacer" />
       )}
       {nextPost ? (
-        <a class="post-nav__link post-nav__link--next card card--proof" href={`/blog/${nextPost.slug}/`}>
-          <span class="post-nav__dir">Next →</span>
+        <a class="post-nav__link post-nav__link--next card card--proof" href={nextPost.url}>
+          <span class="post-nav__dir">{t("post.next")} →</span>
           <span class="post-nav__title">{nextPost.title}</span>
         </a>
       ) : (
@@ -130,7 +172,7 @@ const { prevPost, nextPost, relatedPosts = [] } = Astro.props;
   }
 
   .post-related__card:hover .post-related__name {
-    color: var(--color-blue-deep);
+    color: var(--color-accent-strong);
   }
 
   .post-related__desc {
@@ -144,11 +186,23 @@ const { prevPost, nextPost, relatedPosts = [] } = Astro.props;
   }
 
   .post-cta {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: start;
     margin-top: var(--space-12);
     padding: var(--space-8);
     background:
       linear-gradient(135deg, rgba(var(--rgb-teal), 0.1), rgba(var(--rgb-paper), 0.94) 48%),
       var(--color-paper);
+  }
+
+  .post-cta__avatar {
+    width: 84px;
+    height: 84px;
+    border: 2px solid rgba(var(--rgb-teal), 0.4);
+    border-radius: 50%;
+    object-fit: cover;
   }
 
   .post-cta__copy h2 {
@@ -178,6 +232,80 @@ const { prevPost, nextPost, relatedPosts = [] } = Astro.props;
     border-top: 1px solid var(--color-line);
   }
 
+  .post-newsletter {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+    gap: var(--space-8);
+    align-items: center;
+    margin-top: var(--space-6);
+    padding: var(--space-8);
+    background:
+      linear-gradient(315deg, rgba(var(--rgb-accent), 0.07), rgba(var(--rgb-paper), 0.94) 52%),
+      var(--color-paper);
+  }
+
+  .post-newsletter__copy h2 {
+    margin: var(--space-2) 0 var(--space-3);
+    font-size: clamp(1.25rem, 2.2vw, 1.55rem);
+    line-height: var(--leading-tight);
+  }
+
+  .post-newsletter__copy p {
+    margin: 0;
+    max-width: 52ch;
+    color: var(--color-graphite);
+    font-size: 0.95rem;
+    line-height: var(--leading-normal);
+  }
+
+  .post-newsletter__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .post-newsletter__row input {
+    flex: 1 1 200px;
+    min-width: 0;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-sm);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: inherit;
+  }
+
+  /* Honeypot: kept out of view without aria-hidden so the input is never a
+     hidden-but-focusable trap; tabindex=-1 keeps it off the tab order. */
+  .post-newsletter__extra {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .post-newsletter__form {
+    position: relative;
+  }
+
+  .post-newsletter__note {
+    margin: var(--space-3) 0 0;
+    color: var(--color-muted);
+    font-size: 0.82rem;
+  }
+
+  .post-newsletter__status {
+    margin: var(--space-2) 0 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--color-accent-strong);
+  }
+
+  .post-newsletter__status[data-state="error"] {
+    color: var(--color-red);
+  }
+
   .post-nav {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -200,7 +328,7 @@ const { prevPost, nextPost, relatedPosts = [] } = Astro.props;
   }
 
   .post-nav__dir {
-    color: var(--color-blue-deep);
+    color: var(--color-accent-strong);
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -215,7 +343,7 @@ const { prevPost, nextPost, relatedPosts = [] } = Astro.props;
   }
 
   .post-nav__link:hover .post-nav__title {
-    color: var(--color-blue-deep);
+    color: var(--color-accent-strong);
   }
 
   .post-nav__spacer {
@@ -230,6 +358,13 @@ const { prevPost, nextPost, relatedPosts = [] } = Astro.props;
 
   @media (max-width: 640px) {
     .post-cta {
+      grid-template-columns: 1fr;
+      padding: var(--space-5, 1.25rem);
+    }
+
+    .post-newsletter {
+      grid-template-columns: 1fr;
+      gap: var(--space-5, 1.25rem);
       padding: var(--space-5, 1.25rem);
     }
 
@@ -243,3 +378,48 @@ const { prevPost, nextPost, relatedPosts = [] } = Astro.props;
     }
   }
 </style>
+
+<script>
+  const form = document.querySelector<HTMLFormElement>("[data-newsletter]");
+  if (form) {
+    const status = form.querySelector<HTMLElement>(".post-newsletter__status")!;
+    const emailInput = form.querySelector<HTMLInputElement>('input[name="email"]')!;
+    const button = form.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    const setStatus = (message: string, isError: boolean) => {
+      status.textContent = message;
+      status.dataset.state = isError ? "error" : "ok";
+    };
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const email = emailInput.value.trim();
+      if (!EMAIL_RE.test(email)) {
+        setStatus(form.dataset.msgInvalid ?? "", true);
+        return;
+      }
+
+      button.disabled = true;
+      try {
+        const extra = form.querySelector<HTMLInputElement>('input[name="newsletter_extra"]');
+        const response = await fetch("/api/subscribe/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, newsletter_extra: extra?.value ?? "" }),
+        });
+        const data = await response.json().catch(() => ({ ok: false }));
+        if (response.ok && data.ok) {
+          setStatus(form.dataset.msgSuccess ?? "", false);
+          form.reset();
+        } else {
+          setStatus(data.error || form.dataset.msgError || "", true);
+        }
+      } catch {
+        setStatus(form.dataset.msgError ?? "", true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+</script>

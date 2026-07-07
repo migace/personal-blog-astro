@@ -1,0 +1,103 @@
+---
+import { LOCALES, localizePath, useTranslations } from "../i18n/utils";
+import { languages, type Lang } from "../i18n/ui";
+
+interface Props {
+  lang: Lang;
+  // Optional per-language href overrides (used by blog posts to point at the
+  // matching translation, or fall back to the localized blog index).
+  hrefs?: Partial<Record<Lang, string>>;
+}
+
+const { lang, hrefs = {} } = Astro.props;
+const currentPath = Astro.url.pathname;
+const t = useTranslations(lang);
+
+const labels: Record<Lang, string> = { en: "EN", pl: "PL" };
+// Polish content is AI machine-translated and flagged as beta.
+const betaLocales: Lang[] = ["pl"];
+
+const items = LOCALES.map((locale) => ({
+  locale,
+  label: labels[locale],
+  full: languages[locale],
+  href: hrefs[locale] ?? localizePath(currentPath, locale),
+  active: locale === lang,
+  beta: betaLocales.includes(locale),
+}));
+---
+
+<div class="lang-switch" role="group" aria-label={t("lang.switch")}>
+  {
+    items.map((item) =>
+      item.active ? (
+        <span class="lang-switch__item active" aria-current="true" lang={item.locale}>
+          {item.label}
+          {item.beta && <small class="lang-switch__beta" title={t("beta.badge")}>beta</small>}
+        </span>
+      ) : (
+        <a class="lang-switch__item" href={item.href} hreflang={item.locale} lang={item.locale}>
+          {item.label}
+          {item.beta && <small class="lang-switch__beta" title={t("beta.badge")}>beta</small>}
+        </a>
+      )
+    )
+  }
+</div>
+
+<style>
+  .lang-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.1rem;
+    padding: 0.15rem;
+    border: 1px solid var(--color-line);
+    border-radius: 999px;
+    background: rgba(var(--rgb-paper), 0.75);
+  }
+
+  .lang-switch__item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 999px;
+    color: var(--color-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    transition: background 0.18s ease, color 0.18s ease;
+  }
+
+  a.lang-switch__item:hover {
+    color: var(--color-accent-strong);
+  }
+
+  .lang-switch__item.active {
+    background: rgba(var(--rgb-accent), 0.12);
+    color: var(--color-accent-strong);
+  }
+
+  .lang-switch__beta {
+    margin-left: 0.2rem;
+    padding: 0.02rem 0.28rem;
+    border-radius: 999px;
+    background: rgba(var(--rgb-teal), 0.16);
+    color: var(--color-teal-text);
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.4;
+  }
+
+  @media (max-width: 520px) {
+    /* Header space is scarce on phones; the PL pages show a full AI-beta
+       notice anyway, so the badge can go. */
+    .lang-switch__beta {
+      display: none;
+    }
+  }
+</style>

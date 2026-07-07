@@ -1,0 +1,472 @@
+---
+import BaseHead from "../BaseHead.astro";
+import Header from "../Header.astro";
+import Footer from "../Footer.astro";
+import SocialLinks from "../SocialLinks.astro";
+import Confetti from "../Confetti.astro";
+import { SITE_AUTHOR } from "../../consts";
+import { getLocaleMeta, localizePath, useTranslations } from "../../i18n/utils";
+import type { Lang } from "../../i18n/ui";
+import { contactPage } from "../../i18n/content/pages";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const c = contactPage[lang];
+const t = useTranslations(lang);
+const { htmlLang } = getLocaleMeta(lang);
+
+const contactStructuredData = {
+  "@context": "https://schema.org",
+  "@type": "ContactPage",
+  name: c.metaTitle,
+  description: c.metaDescription,
+  url: new URL(localizePath("/contact/", lang), Astro.site).toString(),
+  mainEntity: {
+    "@type": "Person",
+    name: SITE_AUTHOR,
+    email: "michal.gacek@tiptopdesign.pl",
+    url: new URL(localizePath("/about/", lang), Astro.site).toString(),
+  },
+};
+---
+
+<!doctype html>
+<html lang={htmlLang}>
+  <head>
+    <BaseHead
+      title={c.metaTitle}
+      description={c.metaDescription}
+      structuredData={contactStructuredData}
+      lang={lang}
+    />
+  </head>
+  <body>
+    <Header lang={lang} />
+    <main id="main" class="contact-page">
+      <section class="contact-hero" aria-labelledby="contact-title">
+        <p class="eyebrow">{c.hero.eyebrow}</p>
+        <h1 id="contact-title">{c.hero.title}</h1>
+        <p class="contact-lead">{c.hero.lead}</p>
+      </section>
+
+      <section class="contact-grid" aria-label={t("a11y.contactSection")}>
+        <form class="contact-form card card--pad" id="contact-form" novalidate>
+          <div class="field">
+            <label for="name">{c.form.name}</label>
+            <input id="name" name="name" type="text" autocomplete="name" required />
+          </div>
+          <div class="field">
+            <label for="email">{c.form.email}</label>
+            <input id="email" name="email" type="email" autocomplete="email" required />
+          </div>
+          <div class="field">
+            <label for="subject">{c.form.subject} <span>{c.form.optional}</span></label>
+            <input id="subject" name="subject" type="text" />
+          </div>
+          <div class="field">
+            <label for="message">{c.form.message}</label>
+            <textarea id="message" name="message" rows="6" required></textarea>
+          </div>
+
+          <div class="field field--hp" aria-hidden="true">
+            <label for="contact_extra">Contact extra</label>
+            <input id="contact_extra" name="contact_extra" type="text" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <div class="form-footer">
+            <button class="button button--primary" type="submit" data-default={c.form.submit}>
+              {c.form.submit}
+            </button>
+            <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+
+        <aside class="contact-aside">
+          <div class="card card--pad">
+            <p class="eyebrow eyebrow--deep">{c.aside.directLabel}</p>
+            <ul class="contact-channels">
+              <li>
+                <a href="mailto:michal.gacek@tiptopdesign.pl">michal.gacek@tiptopdesign.pl</a>
+                <span>{c.aside.emailMe}</span>
+              </li>
+              <li>
+                <a href="https://calendly.com/michal-gacek-tiptopdesign/30min" target="_blank" rel="noopener">
+                  {c.aside.bookCall}
+                </a>
+                <span>{c.aside.bookCallSub}</span>
+              </li>
+            </ul>
+            <div class="contact-social">
+              <SocialLinks />
+            </div>
+          </div>
+
+          <div class="card card--pad expect-card">
+            <p class="eyebrow eyebrow--deep">{c.aside.expectLabel}</p>
+            <ul class="signal-list">
+              {c.aside.expect.map((item) => <li>{item}</li>)}
+            </ul>
+          </div>
+        </aside>
+      </section>
+    </main>
+    <Footer lang={lang} />
+
+    <dialog class="success-modal" id="success-modal" aria-labelledby="success-modal-title">
+      <div class="success-modal__inner">
+        <div class="success-modal__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        </div>
+        <h2 id="success-modal-title">{c.success.title}</h2>
+        <p>{c.success.body}</p>
+        <button class="button button--primary" type="button" data-close>{c.success.close}</button>
+      </div>
+    </dialog>
+
+    <Confetti />
+
+    {/* i18n strings as a JSON data block (not executable JS, so it is not
+        governed by the CSP `script-src` directive - see vercel.json). The
+        bundled script below reads it by id. */}
+    <script
+      type="application/json"
+      id="contact-i18n"
+      set:html={JSON.stringify({
+        fillRequired: c.form.fillRequired,
+        sending: c.form.sending,
+        genericError: c.form.genericError,
+        networkError: c.form.networkError,
+        successFallback: c.success.body,
+      })}
+    />
+    {/* is:inline keeps this out of Astro's TS processing (loose DOM access) and
+        makes it a static, CSP-hashable inline script - the locale-specific
+        strings now live in the JSON data block above, so this body never
+        varies. Its hash is in vercel.json (regenerate with `pnpm csp:hashes`). */}
+    <script is:inline>
+      (() => {
+        const dataEl = document.getElementById("contact-i18n");
+        let parsed = {};
+        try {
+          parsed = dataEl ? JSON.parse(dataEl.textContent || "{}") : {};
+        } catch {
+          /* fall back to the English defaults below */
+        }
+        const I = Object.assign(
+          {
+            fillRequired: "Please fill in your name, email, and message.",
+            sending: "Sending…",
+            genericError:
+              "Something went wrong. You can also email me directly at michal.gacek@tiptopdesign.pl.",
+            networkError:
+              "Network error. You can also email me directly at michal.gacek@tiptopdesign.pl.",
+            successFallback: "Thanks - your message is on its way.",
+          },
+          parsed
+        );
+        const form = document.getElementById("contact-form");
+        if (!form) return;
+        const status = document.getElementById("form-status");
+        const button = form.querySelector('button[type="submit"]');
+        const modal = document.getElementById("success-modal");
+
+        function setStatus(text, kind) {
+          status.textContent = text;
+          status.dataset.kind = kind || "";
+        }
+
+        function showSuccess() {
+          setStatus("", "");
+          if (modal && typeof modal.showModal === "function") {
+            modal.showModal();
+          } else {
+            setStatus(I.successFallback, "ok");
+          }
+          window.dispatchEvent(new CustomEvent("confetti:fire"));
+        }
+
+        if (modal) {
+          modal.querySelector("[data-close]")?.addEventListener("click", () => modal.close());
+          modal.addEventListener("click", (event) => {
+            if (event.target === modal) modal.close();
+          });
+        }
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          const data = Object.fromEntries(new FormData(form).entries());
+
+          if (!data.name || !data.email || !data.message) {
+            setStatus(I.fillRequired, "error");
+            return;
+          }
+
+          button.disabled = true;
+          button.textContent = I.sending;
+          setStatus("", "");
+
+          try {
+            const res = await fetch("/api/contact/", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+            });
+            const result = await res.json().catch(() => ({}));
+
+            if (res.ok && result.ok) {
+              form.reset();
+              showSuccess();
+            } else {
+              setStatus((result && result.error) || I.genericError, "error");
+            }
+          } catch {
+            setStatus(I.networkError, "error");
+          } finally {
+            button.disabled = false;
+            button.textContent = button.dataset.default;
+          }
+        });
+      })();
+    </script>
+
+    <style>
+      .contact-page {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-12);
+      }
+
+      .contact-hero {
+        max-width: 760px;
+        padding: var(--space-8) 0 0;
+      }
+
+      .contact-hero h1 {
+        margin: 0;
+      }
+
+      .contact-lead {
+        max-width: 64ch;
+        margin: var(--space-6) 0 0;
+        color: var(--color-graphite);
+        font-size: clamp(1.05rem, 1.6vw, 1.2rem);
+        line-height: var(--leading-relaxed);
+      }
+
+      .contact-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.85fr);
+        gap: var(--space-8);
+        align-items: start;
+      }
+
+      .contact-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-5, 1.25rem);
+      }
+
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-2);
+      }
+
+      .field label {
+        color: var(--color-ink);
+        font-size: 0.84rem;
+        font-weight: 700;
+      }
+
+      .field label span {
+        color: var(--color-muted);
+        font-weight: 400;
+      }
+
+      .field input,
+      .field textarea {
+        width: 100%;
+        padding: 0.7rem 0.85rem;
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-sm);
+        background: var(--color-paper);
+        color: var(--color-ink);
+        font-family: inherit;
+        line-height: var(--leading-normal);
+      }
+
+      .field textarea {
+        resize: vertical;
+      }
+
+      .field input:focus-visible,
+      .field textarea:focus-visible {
+        border-color: rgba(var(--rgb-accent), 0.5);
+        outline: 3px solid rgba(var(--rgb-accent), 0.18);
+        outline-offset: 1px;
+      }
+
+      .field--hp {
+        position: absolute;
+        left: -9999px;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+      }
+
+      .form-footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-4);
+        align-items: center;
+      }
+
+      .form-status {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+
+      .form-status[data-kind="ok"] {
+        color: var(--color-teal-text);
+      }
+
+      .form-status[data-kind="error"] {
+        color: var(--color-red);
+      }
+
+      .contact-aside {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+      }
+
+      .contact-channels {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-4);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .contact-channels li {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-1);
+      }
+
+      .contact-channels a {
+        color: var(--color-accent);
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .contact-channels a:hover {
+        color: var(--color-accent-strong);
+        text-decoration: underline;
+      }
+
+      .contact-channels span {
+        color: var(--color-muted);
+        font-size: 0.84rem;
+      }
+
+      .contact-social {
+        margin-top: var(--space-5, 1.25rem);
+        padding-top: var(--space-5, 1.25rem);
+        border-top: 1px solid var(--color-line);
+      }
+
+      .success-modal {
+        max-width: 420px;
+        width: calc(100% - 2rem);
+        padding: 0;
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-lg);
+        background: var(--color-paper);
+        box-shadow: var(--shadow-lift);
+      }
+
+      .success-modal::backdrop {
+        /* --rgb-shadow, not --rgb-ink: ink flips light in dark mode and would
+           turn this scrim white. */
+        background: rgba(var(--rgb-shadow), 0.45);
+        backdrop-filter: blur(3px);
+      }
+
+      .success-modal[open] .success-modal__inner {
+        animation: modal-in 0.28s ease;
+      }
+
+      .success-modal__inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-3);
+        padding: var(--space-8) var(--space-6) var(--space-6);
+        text-align: center;
+      }
+
+      .success-modal__icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 3.25rem;
+        height: 3.25rem;
+        border-radius: 50%;
+        background: rgba(var(--rgb-teal), 0.12);
+        color: var(--color-teal-text);
+      }
+
+      .success-modal__icon svg {
+        width: 1.6rem;
+        height: 1.6rem;
+      }
+
+      .success-modal h2 {
+        margin: 0;
+        font-size: 1.4rem;
+      }
+
+      .success-modal p {
+        margin: 0;
+        color: var(--color-graphite);
+        font-size: 0.96rem;
+        line-height: var(--leading-normal);
+      }
+
+      .success-modal .button {
+        margin-top: var(--space-3);
+      }
+
+      @keyframes modal-in {
+        from {
+          opacity: 0;
+          transform: translateY(8px) scale(0.98);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .success-modal[open] .success-modal__inner {
+          animation: none;
+        }
+      }
+
+      @media (max-width: 860px) {
+        .contact-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </body>
+</html>

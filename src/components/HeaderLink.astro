@@ -1,14 +1,17 @@
 ---
 import type { HTMLAttributes } from 'astro/types';
+import { stripLangPrefix } from '../i18n/utils';
 
 type Props = HTMLAttributes<'a'>;
 
 const { href, class: className, ...props } = Astro.props;
 
 const { pathname } = Astro.url;
-const subpath = pathname.match(/[^\/]+/g);
+const basePath = stripLangPrefix(pathname);
 const localHref = typeof href === "string" ? href.split("#")[0] : href;
-const isActive = localHref === pathname || localHref === '/' + subpath?.[0];
+const baseHref = typeof localHref === "string" ? stripLangPrefix(localHref) : localHref;
+const subpath = basePath.match(/[^\/]+/g);
+const isActive = baseHref === basePath || baseHref === '/' + (subpath?.[0] ?? '');
 ---
 
 <a href={href} class:list={[className, { active: isActive }]} {...props}>

@@ -10,12 +10,19 @@
 
 .eyebrow {
   margin: 0 0 var(--space-3);
-  color: var(--color-blue);
+  color: var(--color-accent);
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   line-height: 1.2;
   text-transform: uppercase;
+}
+
+/* Quieter tone for panel/footer micro-labels. */
+.eyebrow--deep {
+  color: var(--color-accent-strong);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
 }
 
 .section-header {
@@ -56,13 +63,13 @@
 }
 
 .button--primary {
-  background: var(--color-blue);
-  color: #fff;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
 }
 
 .button--primary:hover {
-  background: var(--color-blue-deep);
-  color: #fff;
+  background: var(--color-accent-strong);
+  color: var(--color-on-accent);
 }
 
 .button--secondary {
@@ -72,14 +79,14 @@
 }
 
 .button--secondary:hover {
-  border-color: rgba(var(--rgb-blue), 0.35);
-  color: var(--color-blue-deep);
+  border-color: rgba(var(--rgb-accent), 0.35);
+  color: var(--color-accent-strong);
 }
 
 .button--text {
   min-height: 0;
   padding: 0;
-  color: var(--color-blue);
+  color: var(--color-accent);
 }
 
 .card {
@@ -102,7 +109,7 @@
 }
 
 .card--proof:hover {
-  border-color: rgba(var(--rgb-blue), 0.24);
+  border-color: rgba(var(--rgb-accent), 0.24);
   box-shadow: var(--shadow-lift);
   transform: translateY(-2px);
 }
@@ -119,6 +126,22 @@
   font-size: 0.72rem;
   font-weight: 700;
   line-height: 1;
+}
+
+/* Interactive variant: tag links in post headers and blog-index topics. */
+a.tag {
+  gap: 0.4rem;
+  min-height: 0;
+  padding: 0.3rem 0.7rem;
+  border-color: var(--color-line);
+  font-size: 0.78rem;
+  text-decoration: none;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+a.tag:hover {
+  border-color: rgba(var(--rgb-accent), 0.35);
+  color: var(--color-accent-strong);
 }
 
 .signal-list {
@@ -172,7 +195,7 @@
   height: 2.75rem;
   border-radius: var(--radius-md);
   background: rgba(var(--rgb-teal), 0.1);
-  color: var(--color-teal);
+  color: var(--color-teal-text);
 }
 
 .contact-card__label {

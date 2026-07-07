@@ -1,0 +1,21 @@
+---
+export const prerender = true;
+
+import { getCollection } from "astro:content";
+import TagPage from "../../../../components/pages/TagPage.astro";
+import { buildTagStaticPaths, type TagPageProps } from "../../../../utils/posts";
+
+export async function getStaticPaths() {
+  return buildTagStaticPaths(await getCollection("blog"), "pl");
+}
+
+const { tag, taggedPosts, alternates, langHrefs } = Astro.props as TagPageProps;
+---
+
+<TagPage
+  lang="pl"
+  tag={tag}
+  taggedPosts={taggedPosts}
+  alternates={alternates}
+  langHrefs={langHrefs}
+/>

@@ -8,13 +8,61 @@ const CONTACT_FROM = "Tiptopdesign contact <noreply@tiptopdesign.pl>";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const MAX_FIELD_LENGTH = 200;
+const MAX_MESSAGE_LENGTH = 5000;
+
+// Best-effort per-IP rate limit. The Map lives only as long as the warm
+// serverless instance, so this is a nuisance filter, not a hard guarantee -
+// good enough for a contact form whose real cost is Resend quota.
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const recentRequests = new Map<string, number[]>();
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  const timestamps = (recentRequests.get(ip) ?? []).filter((t) => t > windowStart);
+  if (timestamps.length >= RATE_LIMIT_MAX) {
+    recentRequests.set(ip, timestamps);
+    return true;
+  }
+  timestamps.push(now);
+  recentRequests.set(ip, timestamps);
+  if (recentRequests.size > 1000) {
+    // Drop stale entries so a scripted flood can't grow the map unbounded.
+    for (const [key, values] of recentRequests) {
+      if (values.every((t) => t <= windowStart)) recentRequests.delete(key);
+    }
+  }
+  return false;
+}
+
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
     headers: { "Content-Type": "application/json" },
   });
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, clientAddress, url }) => {
+  // Reject cross-site POSTs. Browsers always attach Origin to cross-origin
+  // fetch; requests without the header (curl etc.) fall through to the rate
+  // limit and honeypot below.
+  const origin = request.headers.get("origin");
+  if (origin && new URL(origin).host !== url.host) {
+    return json({ ok: false, error: "Invalid request origin." }, 403);
+  }
+
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    clientAddress ||
+    "unknown";
+  if (isRateLimited(ip)) {
+    return json(
+      { ok: false, error: "Too many messages. Please try again later." },
+      429,
+    );
+  }
+
   let payload: Record<string, unknown>;
   try {
     payload = await request.json();
@@ -45,6 +93,15 @@ export const POST: APIRoute = async ({ request }) => {
       { ok: false, error: "Please enter a valid email address." },
       400,
     );
+  }
+
+  if (
+    name.length > MAX_FIELD_LENGTH ||
+    email.length > MAX_FIELD_LENGTH ||
+    subject.length > MAX_FIELD_LENGTH ||
+    message.length > MAX_MESSAGE_LENGTH
+  ) {
+    return json({ ok: false, error: "The message is too long." }, 400);
   }
 
   const apiKey = import.meta.env.RESEND_API_KEY;

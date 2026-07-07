@@ -1,0 +1,205 @@
+---
+import { Image } from "astro:assets";
+import BaseHead from "../BaseHead.astro";
+import Footer from "../Footer.astro";
+import FormattedDate from "../FormattedDate.astro";
+import Header from "../Header.astro";
+import { SITE_TITLE } from "../../consts";
+import { getPostUrl, type BlogEntry } from "../../utils/posts";
+import { getLocaleMeta, localizePath, useTranslations } from "../../i18n/utils";
+import type { Lang } from "../../i18n/ui";
+import { tagsPage } from "../../i18n/content/pages";
+
+interface Props {
+  lang: Lang;
+  tag: string;
+  taggedPosts: BlogEntry[];
+  alternates?: Partial<Record<Lang, string>>;
+  langHrefs?: Partial<Record<Lang, string>>;
+}
+
+const { lang, tag, taggedPosts, alternates, langHrefs } = Astro.props;
+const c = tagsPage[lang];
+const t = useTranslations(lang);
+const { htmlLang } = getLocaleMeta(lang);
+const description = `${c.descPrefix}${tag}${c.descSuffix}`;
+const blogHref = localizePath("/blog/", lang);
+const count = taggedPosts.length;
+const countLabel = count === 1 ? c.articleSingular : c.articlePlural;
+---
+
+<!doctype html>
+<html lang={htmlLang}>
+  <head>
+    <BaseHead
+      title={`${tag} - ${SITE_TITLE}`}
+      description={description}
+      lang={lang}
+      alternates={alternates}
+    />
+  </head>
+  <body>
+    <Header lang={lang} langHrefs={langHrefs} />
+    <main id="main" class="tag-page">
+      <nav class="crumbs" aria-label={t("a11y.breadcrumb")}>
+        <a href={blogHref}>{c.crumbsBlog}</a>
+        <span aria-hidden="true">/</span>
+        <span>{c.crumbsTopics}</span>
+        <span aria-hidden="true">/</span>
+        <span class="crumbs__current">{tag}</span>
+      </nav>
+
+      <section class="tag-intro" aria-labelledby="tag-title">
+        <p class="eyebrow">{c.topicEyebrow}</p>
+        <h1 id="tag-title">{tag}</h1>
+        <p class="section-lead">
+          {count} {countLabel} {c.onThisTopic}
+        </p>
+      </section>
+
+      <ul class="posts-grid">
+        {
+          taggedPosts.map((post) => (
+            <li>
+              <a class="post-card card card--proof" href={getPostUrl(post)}>
+                {post.data.heroImage && (
+                  <Image
+                    src={post.data.heroImage}
+                    alt={post.data.heroAlt ?? post.data.title}
+                    widths={[480, 720, 1080]}
+                    sizes="(max-width: 860px) 100vw, 545px"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                )}
+                <div class="post-card__body">
+                  <h2>{post.data.title}</h2>
+                  <p>{post.data.description}</p>
+                  <p class="post-date">
+                    <FormattedDate date={post.data.pubDate} lang={lang} />
+                  </p>
+                </div>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <p class="tag-back">
+        <a href={blogHref}>{c.backToAll}</a>
+      </p>
+    </main>
+    <Footer lang={lang} />
+
+    <style>
+      .tag-page {
+        width: var(--container-page);
+      }
+
+      .crumbs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        align-items: center;
+        margin-bottom: var(--space-6);
+        color: var(--color-muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+
+      .crumbs a {
+        color: var(--color-accent);
+        text-decoration: none;
+      }
+
+      .crumbs a:hover {
+        color: var(--color-accent-strong);
+        text-decoration: underline;
+      }
+
+      .crumbs__current {
+        color: var(--color-ink);
+      }
+
+      .tag-intro {
+        padding-bottom: var(--space-8);
+        border-bottom: 1px solid var(--color-line);
+      }
+
+      .tag-intro h1 {
+        margin: 0;
+      }
+
+      .posts-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--space-6);
+        margin: var(--space-8) 0 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .post-card {
+        display: block;
+        height: 100%;
+        overflow: hidden;
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .post-card img {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        object-fit: cover;
+      }
+
+      .post-card__body {
+        padding: var(--space-5, 1.25rem);
+      }
+
+      .post-card h2 {
+        margin: 0;
+        font-size: clamp(1.14rem, 2vw, 1.34rem);
+      }
+
+      .post-card p {
+        margin: var(--space-3) 0 0;
+        color: var(--color-muted);
+        font-size: 0.94rem;
+        line-height: var(--leading-normal);
+      }
+
+      .post-date {
+        color: var(--color-muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+      }
+
+      .post-card:hover h2 {
+        color: var(--color-accent-strong);
+      }
+
+      .tag-back {
+        margin-top: var(--space-12);
+      }
+
+      .tag-back a {
+        color: var(--color-accent);
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .tag-back a:hover {
+        color: var(--color-accent-strong);
+        text-decoration: underline;
+      }
+
+      @media (max-width: 860px) {
+        .posts-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </body>
+</html>

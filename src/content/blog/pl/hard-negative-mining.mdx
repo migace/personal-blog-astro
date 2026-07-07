@@ -1,0 +1,174 @@
+---
+title: "Hard Negative Mining: praktyczny przewodnik dla doświadczonych programistów"
+description: "Praktyczne wyjaśnienie hard negative mining dla embeddingów, rankingu, systemów rekomendacyjnych, uczenia kontrastywnego i ewaluacji modeli."
+pubDate: "November 15 2025"
+updatedDate: "July 6 2026"
+heroImage: "../../../assets/heroes/hard-negative-mining.webp"
+heroAlt: "Diagram uczenia maszynowego pokazujący trudne przykłady negatywne w pobliżu granicy decyzyjnej"
+tags: ["Machine Learning", "Quality"]
+lang: "pl"
+---
+
+Modele uczenia maszynowego - zwłaszcza w wyszukiwaniu, systemach rekomendacyjnych i wizji komputerowej - często zawodzą nie z braku danych, ale z braku tych właściwych.
+Jedną z najskuteczniejszych technik na poprawę odporności modelu jest hard negative mining: strategia, która celowo skupia model na najbardziej mylących, najcenniejszych błędach.
+
+Jeśli budujesz wyszukiwanie na embeddingach, systemy rankingowe, modele kontrastywne (sieci syjamskie, Triplet, typu CLIP) albo klasyfikatory, które gubią się przy łudząco podobnych przykładach, hard negative mining może być tym, czego Ci brakuje.
+
+W tym wpisie omawiam, skąd bierze się ten pomysł, dlaczego działa, gdzie sprawdza się w praktyce, jakie są wzorce implementacyjne i pułapki.
+
+---
+
+## Czym jest Hard Negative Mining?
+
+Hard Negative Mining (HNM) to metoda, która wybiera najtrudniejsze, błędnie sklasyfikowane próbki i używa ich do trenowania modelu.
+Zamiast uczyć się na losowych negatywach (łatwych negatywach), model uczy się na:
+
+- **trudnych negatywach (hard negatives)**: próbkach, które wyglądają bardzo podobnie do pozytywów
+- **półtrudnych negatywach (semi-hard negatives)**: próbkach, które leżą blisko w przestrzeni cech, ale wciąż są poprawnie klasyfikowane
+- **fałszywych pozytywach / błędach rankingu**: negatywach, które w rankingu wylądowały wyżej niż prawdziwy pozytyw
+
+Trudne negatywy obnażają, gdzie model się myli, i zmuszają sieć do wyostrzenia wewnętrznych reprezentacji.
+
+---
+
+## Dlaczego to ma znaczenie
+
+Większość rzeczywistych zbiorów danych jest pełna „łatwych negatywów" - przykładów, które są oczywiście inne.
+Trenowanie na nich daje niewiele.
+
+**Przykład:**
+Model rozpoznawania twarzy bez trudu odróżnia:
+
+- Baracka Obamę → trafienie pozytywne
+- psa → łatwy negatyw
+
+Ale ma problem z:
+
+- Barack Obama vs. Denzel Washington → trudny negatyw
+
+Jeśli nie pokażesz mu takich par, nauczy się tylko płytkich cech.
+
+**Trudne negatywy poprawiają:**
+
+- separację embeddingów (dla wyszukiwania wektorowego, retrievalu)
+- czytelność granicy klasyfikacji
+- generalizację na niewidzianych danych
+- odporność modelu na łudząco podobne lub zaszumione wejścia
+
+---
+
+## Jak działa Hard Negative Mining
+
+**1. Trening bazowy.** Zacznij od normalnego wytrenowania modelu na dostępnych danych.
+
+**2. Wskazanie trudnych negatywów.** W trakcie treningu albo po nim:
+
+- policz embeddingi
+- policz wyniki podobieństwa
+- znajdź próbki, które w rankingu wylądowały wyżej niż prawdziwe pozytywy
+- wybierz top-K najbardziej mylących negatywów
+
+Zwykle robi się to za pomocą metryk odległości, takich jak podobieństwo kosinusowe czy odległość euklidesowa.
+
+**3. Ponowny trening / fine-tuning.** Modelowi podajesz:
+
+- (kotwica, pozytyw, trudny negatyw) → dla triplet loss
+- (pozytyw, trudny negatyw) → dla strat kontrastywnych
+- błędnie oznaczone/mylące obrazy → dla klasyfikatorów
+
+**4. Iteracja.** Zbiory trudnych negatywów zmieniają się wraz z poprawą modelu, dlatego mining zwykle odświeża się co jakiś czas w trakcie treningu.
+
+---
+
+## Typowe zastosowania
+
+**Wyszukiwanie wizualne / image retrieval.** Modele e-commerce mylą podobne buty, T-shirty czy meble.
+Trudne negatywy często wyraźnie poprawiają precyzję rankingu, zwłaszcza wśród wizualnie podobnych elementów.
+
+**Rozpoznawanie twarzy.** FaceNet spopularyzował semi-hard triplet mining: negatywy dobiera się wewnątrz batcha tak, żeby były trudne, ale nie beznadziejnie trudne. ArcFace idzie zupełnie inną drogą - stosuje stratę klasyfikacyjną z marginesem (margin-based loss) zamiast jawnego doboru negatywów. To zestawienie dobrze przypomina, że mining to jeden ze sposobów na rozseparowanie embeddingów, a nie jedyny.
+
+**NLP i embeddingi.** Przy sentence-transformers pary trudnych negatywów pomagają modelom odróżniać:
+
+- „refund policy" vs. „shipping policy"
+- „invoice number" vs. „order number"
+
+**Systemy rekomendacyjne.** Rekomendery oparte na embeddingach uczą się wektorów użytkowników i produktów; trudne negatywy pomagają przy:
+
+- produktach łudząco podobnych
+- produktach kupowanych razem
+- produktach z tej samej kategorii
+
+**Dopasowywanie dźwięku.** Uczone embeddingi audio (wykrywanie coverów, tagowanie muzyki) korzystają z trudnych negatywów, np. utworów o podobnych cechach spektralnych. Klasyczne systemy fingerprintingu w rodzaju Shazama to inna bajka - haszowanie spektralne, a nie trenowane embeddingi - więc mining ich nie dotyczy.
+
+---
+
+## Wzorce implementacyjne
+
+**Wzorzec 1: Offline Hard Negative Mining**
+
+Negatywy liczysz raz, przed treningiem.
+
+Zalety: prostota, skalowalność
+Wady: statyczne, mogą nie nadążać za zmianami modelu
+
+Uproszczony pseudokod:
+
+```python
+for anchor in dataset:
+    pos = anchor.positive
+    embedding_anchor = model(anchor)
+    distances = compute_similarity(embedding_anchor, all_embeddings)
+    hard_neg = pick_top_k_negatives(distances)
+    training_pairs.append((anchor, pos, hard_neg))
+```
+
+**Wzorzec 2: Online Hard Negative Mining (In-Batch)**
+
+Model wskazuje trudne negatywy na bieżąco, w obrębie każdego batcha.
+
+Stosowane w:
+
+- CLIP
+- SimCLR
+- FaceNet (semi-hard mining)
+
+**Wzorzec 3: Dynamiczny Memory Bank**
+
+Konfiguracje wielkoskalowe (wyszukiwarki obsługujące miliardy elementów) używają kolejek pamięci, by pobierać trudne negatywy z wielu batchy.
+
+Zainspirowane przez:
+
+- MoCo (Momentum Contrast)
+- frameworki Deep Metric Learning
+
+---
+
+## Korzyści i pułapki
+
+### Korzyści
+
+- Wyższa dokładność w zadaniach opartych na embeddingach
+- Mniejsze przeuczenie na łatwych negatywach
+- Lepsze metryki rankingowe (NDCG, mAP, Recall@K)
+- Szybsza zbieżność modeli kontrastywnych
+
+### Pułapki
+
+- **Zbyt trudne lub błędnie oznaczone negatywy potrafią zdestabilizować trening.** Jeśli negatywy są niemożliwe albo błędnie oznaczone, model może się rozjechać.
+- **Koszt obliczeniowy.** Mining wymaga masowego liczenia podobieństw.
+- **Wymaga dobrze wyselekcjonowanych pozytywów.** Śmieciowe pozytywy → niewiarygodne negatywy.
+
+---
+
+## Podsumowanie
+
+Hard Negative Mining to jedna z najbardziej wpływowych technik poprawiania modeli ML, gdy danych jest pod dostatkiem, ale są zbyt łatwe. Zmusza model do uczenia się głębszych rozróżnień semantycznych, bo konfrontuje go z mylącymi, znaczącymi błędami.
+
+Sięgnij po HNM, gdy:
+
+- twoje embeddingi grupują się zbyt blisko siebie
+- wyniki wyszukiwania co jakiś czas zwracają „prawie poprawne" rozpraszacze
+- dokładność klasyfikatora przestaje rosnąć
+- rośnie skala systemów retrievalu i rekomendacji
+
+W połączeniu z uczeniem kontrastywnym i nowoczesnymi modelami embeddingów to zwykle najtańszy sposób na odzyskanie precyzji, o której myślało się, że wymaga większego zbioru danych.

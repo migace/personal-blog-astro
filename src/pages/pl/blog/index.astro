@@ -1,0 +1,10 @@
+---
+export const prerender = true;
+import { getCollection } from "astro:content";
+import BlogIndexPage from "../../../components/pages/BlogIndexPage.astro";
+import { filterByLang, sortByDateDesc } from "../../../utils/posts";
+
+const posts = sortByDateDesc(filterByLang(await getCollection("blog"), "pl"));
+---
+
+<BlogIndexPage lang="pl" posts={posts} />

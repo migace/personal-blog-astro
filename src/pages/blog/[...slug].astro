@@ -1,48 +1,19 @@
 ---
 export const prerender = true;
 
-import { type CollectionEntry, getCollection, render } from "astro:content";
+import { getCollection, render } from "astro:content";
 import BlogPost from "../../layouts/BlogPost.astro";
-import { getReadingTime, getRelatedPosts, sortByDateDesc } from "../../utils/posts";
-
-type RelatedProp = { slug: string; title: string; description: string };
+import { buildPostStaticPaths, type PostPageProps } from "../../utils/posts";
 
 export async function getStaticPaths() {
-  const posts = sortByDateDesc(await getCollection("blog"));
-
-  return posts.map((post, index) => {
-    const newer = posts[index - 1];
-    const older = posts[index + 1];
-    const relatedPosts: RelatedProp[] = getRelatedPosts(post, posts, 3).map(
-      (related) => ({
-        slug: related.id,
-        title: related.data.title,
-        description: related.data.description,
-      })
-    );
-    return {
-      params: { slug: post.id },
-      props: {
-        post,
-        // "Previous" reads chronologically backwards (older post),
-        // "Next" moves forward in time (newer post).
-        prevPost: older ? { slug: older.id, title: older.data.title } : undefined,
-        nextPost: newer ? { slug: newer.id, title: newer.data.title } : undefined,
-        relatedPosts,
-        readingTime: getReadingTime(post.body),
-      },
-    };
-  });
+  const posts = await getCollection("blog");
+  return buildPostStaticPaths(posts, "en");
 }
-type Props = {
-  post: CollectionEntry<"blog">;
-  prevPost?: { slug: string; title: string };
-  nextPost?: { slug: string; title: string };
-  relatedPosts?: RelatedProp[];
-  readingTime?: number;
-};
 
-const { post, prevPost, nextPost, relatedPosts, readingTime } = Astro.props;
+type Props = PostPageProps;
+
+const { post, prevPost, nextPost, relatedPosts, readingTime, alternates, langHrefs, ogImage } =
+  Astro.props;
 const { Content } = await render(post);
 ---
 
@@ -52,6 +23,9 @@ const { Content } = await render(post);
   nextPost={nextPost}
   relatedPosts={relatedPosts}
   readingTime={readingTime}
+  alternates={alternates}
+  langHrefs={langHrefs}
+  ogImage={ogImage}
 >
   <Content />
 </BlogPost>

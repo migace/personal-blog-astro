@@ -1,5 +1,6 @@
 ---
 import type { CollectionEntry } from 'astro:content';
+import { Image } from 'astro:assets';
 import BaseHead from '../components/BaseHead.astro';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
@@ -7,14 +8,16 @@ import FormattedDate from '../components/FormattedDate.astro';
 import PostFooter from '../components/PostFooter.astro';
 import { SITE_AUTHOR, SITE_TITLE } from '../consts';
 import { slugifyTag } from '../utils/posts';
+import { getLocaleMeta, localizePath, useTranslations } from '../i18n/utils';
+import type { Lang } from '../i18n/ui';
 
 interface PostLink {
-	slug: string;
+	url: string;
 	title: string;
 }
 
 interface RelatedPost {
-	slug: string;
+	url: string;
 	title: string;
 	description: string;
 }
@@ -24,6 +27,9 @@ type Props = CollectionEntry<'blog'>['data'] & {
 	nextPost?: PostLink;
 	relatedPosts?: RelatedPost[];
 	readingTime?: number;
+	alternates?: Partial<Record<Lang, string>>;
+	langHrefs?: Partial<Record<Lang, string>>;
+	ogImage?: string;
 };
 
 const {
@@ -33,22 +39,27 @@ const {
 	updatedDate,
 	heroImage,
 	heroAlt,
-	heroWidth,
-	heroHeight,
 	tags,
+	lang = 'en',
 	prevPost,
 	nextPost,
 	relatedPosts,
 	readingTime,
+	alternates,
+	langHrefs,
+	ogImage,
 } = Astro.props;
 
+const t = useTranslations(lang as Lang);
+const { htmlLang } = getLocaleMeta(lang as Lang);
 const canonicalURL = new URL(Astro.url.pathname, Astro.site);
-const imageURL = heroImage ? new URL(heroImage, Astro.site).toString() : undefined;
+const imageURL = heroImage ? new URL(heroImage.src, Astro.site).toString() : undefined;
 const articleStructuredData = {
 	"@context": "https://schema.org",
 	"@type": "BlogPosting",
 	headline: title,
 	description,
+	inLanguage: htmlLang,
 	datePublished: pubDate.toISOString(),
 	dateModified: (updatedDate ?? pubDate).toISOString(),
 	mainEntityOfPage: canonicalURL.toString(),
@@ -73,14 +84,14 @@ const breadcrumbStructuredData = {
 		{
 			"@type": "ListItem",
 			position: 1,
-			name: "Home",
-			item: new URL("/", Astro.site).toString(),
+			name: t("nav.home"),
+			item: new URL(localizePath("/", lang as Lang), Astro.site).toString(),
 		},
 		{
 			"@type": "ListItem",
 			position: 2,
-			name: "Blog",
-			item: new URL("/blog/", Astro.site).toString(),
+			name: t("nav.blog"),
+			item: new URL(localizePath("/blog/", lang as Lang), Astro.site).toString(),
 		},
 		{
 			"@type": "ListItem",
@@ -92,24 +103,26 @@ const breadcrumbStructuredData = {
 };
 ---
 
-<html lang="en">
+<html lang={htmlLang}>
 	<head>
 		<BaseHead
 			title={title}
 			description={description}
-			image={heroImage}
+			image={ogImage}
 			imageAlt={heroAlt ?? title}
 			type="article"
 			publishedTime={pubDate}
 			updatedTime={updatedDate ?? pubDate}
 			tags={tags}
 			structuredData={[articleStructuredData, breadcrumbStructuredData]}
+			lang={lang as Lang}
+			alternates={alternates}
 		/>
 		<style>
 			main {
 				width: calc(100% - 2em);
 				max-width: 100%;
-				margin: 0;
+				margin: 0 auto;
 				padding-top: var(--space-8);
 			}
 			.hero-image {
@@ -160,29 +173,49 @@ const breadcrumbStructuredData = {
 				gap: var(--space-2);
 				margin-top: var(--space-4);
 			}
-			.post-topic {
-				display: inline-flex;
-				align-items: center;
-				padding: 0.25rem 0.65rem;
-				border: 1px solid var(--color-line);
-				border-radius: 999px;
-				background: rgba(var(--rgb-paper), 0.8);
-				color: var(--color-graphite);
-				font-size: 0.74rem;
-				font-weight: 700;
-				letter-spacing: 0.02em;
-				text-decoration: none;
-				transition: border-color 0.18s ease, color 0.18s ease;
-			}
-			.post-topic:hover {
-				border-color: rgba(var(--rgb-blue), 0.35);
-				color: var(--color-blue-deep);
-			}
 			.last-updated-on {
 				margin-top: var(--space-1);
 				font-style: normal;
 				letter-spacing: 0;
 				text-transform: none;
+			}
+			.ai-beta-notice {
+				display: flex;
+				gap: var(--space-3);
+				align-items: flex-start;
+				margin: 0 0 var(--space-8);
+				padding: var(--space-3) var(--space-4);
+				border: 1px solid var(--color-line);
+				border-left: 3px solid var(--color-teal);
+				border-radius: var(--radius-sm);
+				background: rgba(var(--rgb-teal), 0.06);
+			}
+			.ai-beta-notice__badge {
+				flex: 0 0 auto;
+				margin-top: 0.1rem;
+				padding: 0.12rem 0.45rem;
+				border-radius: 999px;
+				background: rgba(var(--rgb-teal), 0.16);
+				color: var(--color-teal-text);
+				font-size: 0.66rem;
+				font-weight: 700;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+			}
+			.ai-beta-notice p {
+				margin: 0;
+				color: var(--color-graphite);
+				font-size: 0.86rem;
+				line-height: var(--leading-normal);
+			}
+			.ai-beta-notice a {
+				color: var(--color-accent);
+				font-weight: 700;
+				text-decoration: none;
+			}
+			.ai-beta-notice a:hover {
+				color: var(--color-accent-strong);
+				text-decoration: underline;
 			}
 		</style>
 		<style is:global>
@@ -201,10 +234,12 @@ const breadcrumbStructuredData = {
 				overflow: hidden;
 				transition: box-shadow 0.25s ease, transform 0.25s ease;
 			}
+			/* The code card is a committed dark surface in both themes, so its
+			   teal chrome uses the fixed light logo teal, not theme tokens. */
 			.prose .code-card:hover {
 				box-shadow:
 					0 1px 0 rgba(255, 255, 255, 0.05) inset,
-					0 20px 50px rgba(var(--rgb-blue), 0.18);
+					0 20px 50px rgba(45, 212, 191, 0.14);
 			}
 			.prose .code-card__bar {
 				display: flex;
@@ -241,8 +276,8 @@ const breadcrumbStructuredData = {
 				align-items: center;
 				padding: 2px 8px;
 				border-radius: 999px;
-				background: rgba(var(--rgb-blue), 0.14);
-				color: #93c5fd;
+				background: rgba(45, 212, 191, 0.14);
+				color: #7ee8da;
 				font-weight: 600;
 				letter-spacing: 0.04em;
 				text-transform: uppercase;
@@ -272,9 +307,9 @@ const breadcrumbStructuredData = {
 				transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 			}
 			.prose .code-card__btn:hover {
-				background: rgba(var(--rgb-blue), 0.16);
-				border-color: rgba(var(--rgb-blue), 0.5);
-				color: #dbeafe;
+				background: rgba(45, 212, 191, 0.16);
+				border-color: rgba(45, 212, 191, 0.5);
+				color: #ccfbf1;
 			}
 			.prose .code-card__btn[data-state="ok"] {
 				background: rgba(34, 197, 94, 0.15);
@@ -316,8 +351,8 @@ const breadcrumbStructuredData = {
 				user-select: none;
 			}
 			.prose .code-card pre code > .line.is-marked {
-				background: rgba(37, 99, 235, 0.16);
-				border-left-color: var(--accent);
+				background: rgba(45, 212, 191, 0.13);
+				border-left-color: #2dd4bf;
 			}
 
 			.prose .code-card[data-collapsible="true"][data-collapsed="true"] pre {
@@ -340,39 +375,44 @@ const breadcrumbStructuredData = {
 				border: none;
 				border-top: 1px solid var(--code-border);
 				background: rgba(255, 255, 255, 0.02);
-				color: #93c5fd;
+				color: #7ee8da;
 				font-family: inherit;
 				font-size: 0.78rem;
 				padding: 0.55rem;
 				cursor: pointer;
 				letter-spacing: 0.03em;
 			}
-			.prose .code-card__expand:hover { background: rgba(37, 99, 235, 0.12); }
+			.prose .code-card__expand:hover { background: rgba(45, 212, 191, 0.1); }
 			.prose .code-card[data-collapsible="true"] .code-card__expand { display: block; }
 
-			.prose code:not(pre code) {
-				background: rgba(var(--rgb-blue), 0.1);
-				color: var(--color-blue-deep);
-				padding: 1px 6px;
-				border-radius: 6px;
-				font-size: 0.92em;
+			/* Inline `code` styling lives in styles/typography.css. */
+
+			.prose .table-scroll {
+				margin: 1.5em 0;
+				overflow-x: auto;
+			}
+
+			.prose .table-scroll table {
+				min-width: 480px;
+				margin: 0;
 			}
 		</style>
 	</head>
 
 	<body>
-		<Header />
-		<main>
+		<Header lang={lang as Lang} langHrefs={langHrefs} />
+		<main id="main">
 			<article>
 				<div class="hero-image">
 					{
 						heroImage && (
-							<img
-								width={heroWidth ?? 1020}
-								height={heroHeight ?? 510}
+							<Image
 								src={heroImage}
 								alt={heroAlt ?? title}
+								widths={[480, 800, 1120, 1440]}
+								sizes="(max-width: 1160px) 100vw, 1120px"
 								decoding="async"
+								loading="eager"
 								fetchpriority="high"
 							/>
 						)
@@ -381,22 +421,22 @@ const breadcrumbStructuredData = {
 				<div class="prose">
 					<div class="title">
 						<div class="date">
-							<FormattedDate date={pubDate} />
-							{readingTime && <span class="reading-time">{readingTime} min read</span>}
+							<FormattedDate date={pubDate} lang={lang as Lang} />
+							{readingTime && <span class="reading-time">{readingTime} {t("post.readingTime")}</span>}
 							{
 								updatedDate && (
 									<div class="last-updated-on">
-										Last updated on <FormattedDate date={updatedDate} />
+										{t("post.lastUpdated")} <FormattedDate date={updatedDate} lang={lang as Lang} />
 									</div>
 								)
 							}
 						</div>
 						<h1>{title}</h1>
 						{
-							tags?.length && (
+							tags && tags.length > 0 && (
 								<div class="post-topics">
 									{tags.map((tag) => (
-										<a class="post-topic" href={`/blog/tags/${slugifyTag(tag)}/`}>
+										<a class="tag" href={localizePath(`/blog/tags/${slugifyTag(tag)}/`, lang as Lang)}>
 											{tag}
 										</a>
 									))}
@@ -404,15 +444,72 @@ const breadcrumbStructuredData = {
 							)
 						}
 					</div>
+					{
+						lang === "pl" && (
+							<aside class="ai-beta-notice" role="note">
+								<span class="ai-beta-notice__badge">{t("beta.badge")}</span>
+								<p>
+									{t("beta.notice")}
+									{alternates?.en && (
+										<>
+											{" "}
+											<a href={alternates.en}>{t("beta.viewOriginal")}</a>.
+										</>
+									)}
+								</p>
+							</aside>
+						)
+					}
 					<slot />
-					<PostFooter prevPost={prevPost} nextPost={nextPost} relatedPosts={relatedPosts} />
+					<PostFooter prevPost={prevPost} nextPost={nextPost} relatedPosts={relatedPosts} lang={lang as Lang} />
 				</div>
 			</article>
 		</main>
-		<Footer />
+		<Footer lang={lang as Lang} />
+		{/* i18n strings as a JSON data block (not executable JS, so it is not
+		    governed by the CSP `script-src` directive - see vercel.json). The
+		    bundled script below reads it by id. */}
+		<script
+			type="application/json"
+			id="code-i18n"
+			set:html={JSON.stringify({
+				copy: t("code.copy"),
+				copied: t("code.copied"),
+				lines: t("code.lines"),
+				toggleLines: t("code.toggleLines"),
+				copyToClipboard: t("code.copyToClipboard"),
+				collapse: t("code.collapse"),
+				expand: t("code.expand"),
+				expandLines: t("code.expandLines"),
+			})}
+		/>
+		{/* is:inline keeps this out of Astro's TS processing (loose DOM access)
+		    and makes it a static, CSP-hashable inline script - the locale strings
+		    now live in the JSON data block above, so this body never varies. Its
+		    hash is in vercel.json (regenerate with `pnpm csp:hashes`). */}
 		<script is:inline>
 			(() => {
 				const COLLAPSE_THRESHOLD = 14;
+				const dataEl = document.getElementById("code-i18n");
+				let parsed = {};
+				try {
+					parsed = dataEl ? JSON.parse(dataEl.textContent || "{}") : {};
+				} catch {
+					/* fall back to the English defaults below */
+				}
+				const I = Object.assign(
+					{
+						copy: "Copy",
+						copied: "Copied",
+						lines: "Lines",
+						toggleLines: "Toggle line numbers",
+						copyToClipboard: "Copy to clipboard",
+						collapse: "Collapse",
+						expand: "Expand",
+						expandLines: "lines",
+					},
+					parsed
+				);
 
 				const ICON_COPY =
 					'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
@@ -482,8 +579,8 @@ const breadcrumbStructuredData = {
 					const numBtn = document.createElement("button");
 					numBtn.type = "button";
 					numBtn.className = "code-card__btn";
-					numBtn.title = "Toggle line numbers";
-					numBtn.innerHTML = ICON_HASH + "<span>Lines</span>";
+					numBtn.title = I.toggleLines;
+					numBtn.innerHTML = ICON_HASH + "<span>" + I.lines + "</span>";
 					numBtn.addEventListener("click", () => {
 						const on = card.dataset.numbered === "true";
 						card.dataset.numbered = on ? "false" : "true";
@@ -492,16 +589,16 @@ const breadcrumbStructuredData = {
 					const copyBtn = document.createElement("button");
 					copyBtn.type = "button";
 					copyBtn.className = "code-card__btn";
-					copyBtn.title = "Copy to clipboard";
-					copyBtn.innerHTML = ICON_COPY + "<span>Copy</span>";
+					copyBtn.title = I.copyToClipboard;
+					copyBtn.innerHTML = ICON_COPY + "<span>" + I.copy + "</span>";
 					copyBtn.addEventListener("click", async () => {
 						try {
 							await navigator.clipboard.writeText(raw);
 							copyBtn.dataset.state = "ok";
-							copyBtn.innerHTML = ICON_OK + "<span>Copied</span>";
+							copyBtn.innerHTML = ICON_OK + "<span>" + I.copied + "</span>";
 							setTimeout(() => {
 								copyBtn.dataset.state = "";
-								copyBtn.innerHTML = ICON_COPY + "<span>Copy</span>";
+								copyBtn.innerHTML = ICON_COPY + "<span>" + I.copy + "</span>";
 							}, 1600);
 						} catch (e) {}
 					});
@@ -519,16 +616,26 @@ const breadcrumbStructuredData = {
 						const expand = document.createElement("button");
 						expand.type = "button";
 						expand.className = "code-card__expand";
-						expand.textContent = "Expand " + lineCount + " lines";
+						expand.textContent = I.expand + " " + lineCount + " " + I.expandLines;
 						expand.addEventListener("click", () => {
 							const collapsed = card.dataset.collapsed === "true";
 							card.dataset.collapsed = collapsed ? "false" : "true";
 							expand.textContent = collapsed
-								? "Collapse"
-								: "Expand " + lineCount + " lines";
+								? I.collapse
+								: I.expand + " " + lineCount + " " + I.expandLines;
 						});
 						card.appendChild(expand);
 					}
+				});
+
+				// Wide MDX tables must scroll inside their own container instead
+				// of overflowing the page on mobile.
+				document.querySelectorAll(".prose table").forEach((table) => {
+					if (table.parentElement && table.parentElement.classList.contains("table-scroll")) return;
+					const wrap = document.createElement("div");
+					wrap.className = "table-scroll";
+					table.parentNode.insertBefore(wrap, table);
+					wrap.appendChild(table);
 				});
 			})();
 		</script>
