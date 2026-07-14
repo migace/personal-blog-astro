@@ -42,6 +42,16 @@
       aspect-ratio: 16 / 10;
     }
   }
+
+  /* The nodes scale down with the canvas (see SC in the script), which keeps
+     them legible and collision-free down to ~360px viewports. Below this the
+     labels would overlap even scaled, so drop the diagram - the panel's WORKING
+     MODEL list still carries the message on the smallest phones. */
+  @media (max-width: 340px) {
+    .hero-pipeline {
+      display: none;
+    }
+  }
 </style>
 
 <script>
@@ -75,6 +85,11 @@
 
     // ---- sizing ----
     let W = 0, H = 0;
+    // Node scale: full size on wide canvases (the desktop look), shrinking on
+    // narrow ones (laptop 2-column, phones) so the fixed labels never collide.
+    // Floor 0.82 keeps the mono labels readable; below ~340px viewport the CSS
+    // hides the diagram entirely.
+    let SC = 1;
     function resize() {
       const r = root!.getBoundingClientRect();
       W = r.width;
@@ -89,12 +104,12 @@
     // ---- graph ----
     type Node = { nx: number; ny: number; label: string; hub?: boolean; x: number; y: number; pulse: number; glow: number; glowColor?: string };
     const NODES: Record<string, Node> = {
-      intent: { nx: 0.08, ny: 0.5, label: "intent", x: 0, y: 0, pulse: 0, glow: 0 },
+      intent: { nx: 0.05, ny: 0.5, label: "intent", x: 0, y: 0, pulse: 0, glow: 0 },
       agent: { nx: 0.42, ny: 0.5, label: "reasoning", hub: true, x: 0, y: 0, pulse: 0, glow: 0 },
-      kb: { nx: 0.3, ny: 0.15, label: "knowledge", x: 0, y: 0, pulse: 0, glow: 0 },
-      tools: { nx: 0.73, ny: 0.26, label: "actions", x: 0, y: 0, pulse: 0, glow: 0 },
-      verify: { nx: 0.73, ny: 0.78, label: "verify", x: 0, y: 0, pulse: 0, glow: 0 },
-      out: { nx: 0.94, ny: 0.5, label: "outcome", x: 0, y: 0, pulse: 0, glow: 0 },
+      kb: { nx: 0.28, ny: 0.13, label: "knowledge", x: 0, y: 0, pulse: 0, glow: 0 },
+      tools: { nx: 0.75, ny: 0.24, label: "actions", x: 0, y: 0, pulse: 0, glow: 0 },
+      verify: { nx: 0.75, ny: 0.8, label: "verify", x: 0, y: 0, pulse: 0, glow: 0 },
+      out: { nx: 0.96, ny: 0.5, label: "outcome", x: 0, y: 0, pulse: 0, glow: 0 },
     };
     const EDGES = [
       ["intent", "agent"], ["agent", "kb"], ["agent", "tools"],
@@ -102,6 +117,7 @@
     ];
 
     function layout() {
+      SC = Math.max(0.82, Math.min(1, W / 440));
       const padX = Math.max(40, W * 0.07);
       const padY = Math.max(28, H * 0.12);
       const iw = W - padX * 2, ih = H - padY * 2;
@@ -168,9 +184,9 @@
     }
 
     function drawNode(n: Node) {
-      ctx!.font = "600 13px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx!.font = "600 " + (13 * SC).toFixed(1) + "px ui-monospace, SFMono-Regular, Menlo, monospace";
       const tw = ctx!.measureText(n.label).width;
-      const w = Math.max(62, tw + 30), h = 32;
+      const w = Math.max(54 * SC, tw + 26 * SC), h = 30 * SC;
       const x = n.x - w / 2, y = n.y - h / 2;
 
       if (n.pulse > 0) {
@@ -178,13 +194,13 @@
         ctx!.globalAlpha = n.pulse * 0.5;
         ctx!.strokeStyle = n.glowColor || PAL.teal;
         ctx!.lineWidth = 2;
-        const grow = (1 - n.pulse) * 14;
-        rr(x - grow, y - grow, w + grow * 2, h + grow * 2, 11 + grow);
+        const grow = (1 - n.pulse) * 14 * SC;
+        rr(x - grow, y - grow, w + grow * 2, h + grow * 2, 10 * SC + grow);
         ctx!.stroke();
         ctx!.restore();
       }
 
-      rr(x, y, w, h, 8);
+      rr(x, y, w, h, 8 * SC);
       ctx!.fillStyle = PAL.paper;
       ctx!.fill();
       if (n.hub) {
@@ -201,14 +217,14 @@
       ctx!.stroke();
 
       ctx!.beginPath();
-      ctx!.arc(x + 12, n.y, 2.9, 0, Math.PI * 2);
+      ctx!.arc(x + 11 * SC, n.y, 2.7 * SC, 0, Math.PI * 2);
       ctx!.fillStyle = n.hub ? PAL.accent : PAL.teal;
       ctx!.fill();
 
       ctx!.fillStyle = PAL.ink;
       ctx!.textAlign = "left";
       ctx!.textBaseline = "middle";
-      ctx!.fillText(n.label, x + 21, n.y + 0.5);
+      ctx!.fillText(n.label, x + 19 * SC, n.y + 0.5);
     }
 
     function drawPacket(p: Packet) {
@@ -223,7 +239,7 @@
       grad.addColorStop(0, "transparent");
       grad.addColorStop(1, col);
       ctx!.strokeStyle = grad;
-      ctx!.lineWidth = 3;
+      ctx!.lineWidth = 3 * SC;
       ctx!.lineCap = "round";
       ctx!.beginPath();
       ctx!.moveTo(tx, ty);
@@ -232,9 +248,9 @@
 
       ctx!.save();
       ctx!.shadowColor = col;
-      ctx!.shadowBlur = 12;
+      ctx!.shadowBlur = 12 * SC;
       ctx!.beginPath();
-      ctx!.arc(x, y, 4.4, 0, Math.PI * 2);
+      ctx!.arc(x, y, 4.2 * SC, 0, Math.PI * 2);
       ctx!.fillStyle = col;
       ctx!.fill();
       ctx!.restore();
