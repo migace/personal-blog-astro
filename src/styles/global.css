@@ -54,6 +54,11 @@ main {
   max-width: calc(100% - 2rem);
   margin: auto;
   padding: var(--space-12) 0 var(--space-16);
+  /* Contain the horizontal reveal offset (translateX on data-reveal="left|right")
+     so it never spills past the viewport and creates a sideways scroll. `clip`
+     keeps the vertical axis visible and, unlike overflow on <body>, does not
+     break the sticky header (which lives outside <main>). */
+  overflow-x: clip;
 }
 
 ::selection {

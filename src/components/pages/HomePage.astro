@@ -325,6 +325,11 @@ const redisPlaygroundHref = `${localizePath("/blog/redis-in-practice-hono-typesc
     margin-top: var(--space-8);
   }
 
+  .home-hero__copy,
+  .home-hero__panel {
+    min-width: 0;
+  }
+
   .home-hero__panel {
     padding: var(--space-6);
     background:
@@ -793,7 +798,7 @@ const redisPlaygroundHref = `${localizePath("/blog/redis-in-practice-hono-typesc
     .home-hero,
     .lab-strip,
     .services-cta {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
       min-height: 0;
     }
 

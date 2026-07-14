@@ -51,6 +51,18 @@
   }
 }
 
+/* On collapsed (single-column) layouts a full-width element is as wide as the
+   viewport, so a horizontal reveal offset (translateX) would push it past the
+   edge - a sideways scroll, or clipped content under main's overflow-x:clip.
+   Slide such elements up instead. 920px is the widest breakpoint at which the
+   hero / about / contact side-by-side layouts collapse to one column. */
+@media (prefers-reduced-motion: no-preference) and (max-width: 920px) {
+  [data-reveal="left"],
+  [data-reveal="right"] {
+    transform: translateY(22px);
+  }
+}
+
 /* No-JS fallback: with scripting disabled the observer never runs, so reveal
    everything up front. Replaces a <noscript><style> block, which Astro cannot
    emit from inside <head> (it parses every <style> in the template). */
