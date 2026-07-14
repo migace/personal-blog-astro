@@ -83,22 +83,26 @@ const redisPlaygroundHref = `${localizePath("/blog/redis-in-practice-hono-typesc
     <Header lang={lang} />
     <main id="main" class="home">
       <section class="home-hero" aria-labelledby="home-title">
-        <div class="home-hero__copy">
-          <p class="eyebrow">{c.hero.eyebrow}</p>
-          <h1 id="home-title">{c.hero.title}</h1>
-          <p class="home-hero__lead">{c.hero.lead}</p>
-          <div class="home-hero__actions">
+        <div class="home-hero__copy" data-reveal-stagger="90">
+          <p class="eyebrow" data-reveal>{c.hero.eyebrow}</p>
+          <h1 id="home-title" data-reveal>{c.hero.title}</h1>
+          <p class="home-hero__lead" data-reveal>{c.hero.lead}</p>
+          <div class="home-hero__actions" data-reveal>
             <a class="button button--primary" href={contactHref}>{c.hero.ctaPrimary}</a>
             <a class="button button--secondary" href={blogHref}>{c.hero.ctaSecondary}</a>
           </div>
         </div>
 
-        <aside class="home-hero__panel card card--interactive" aria-label={c.panelLabel}>
+        <aside
+          class="home-hero__panel card card--interactive"
+          aria-label={c.panelLabel}
+          data-reveal="right"
+        >
           <p class="eyebrow eyebrow--deep">{c.panelLabel}</p>
-          <ol class="delivery-steps">
+          <ol class="delivery-steps" data-reveal-stagger="120">
             {
               c.deliverySteps.map((step, i) => (
-                <li>
+                <li data-reveal="left">
                   <span>{String(i + 1).padStart(2, "0")}</span> {step}
                 </li>
               ))
@@ -107,24 +111,24 @@ const redisPlaygroundHref = `${localizePath("/blog/redis-in-practice-hono-typesc
         </aside>
       </section>
 
-      <section class="trust-strip" aria-label={t("a11y.trackRecord")}>
+      <section class="trust-strip" aria-label={t("a11y.trackRecord")} data-reveal="fade">
         <p class="trust-strip__label">{c.trustLabel}</p>
-        <ul class="trust-strip__list">
-          {companies.map((company) => <li>{company}</li>)}
+        <ul class="trust-strip__list" data-reveal-stagger="70">
+          {companies.map((company) => <li data-reveal="fade">{company}</li>)}
         </ul>
       </section>
 
       <section class="home-section" aria-labelledby="fit-title">
-        <div class="section-header">
+        <div class="section-header" data-reveal>
           <p class="eyebrow">{c.fit.eyebrow}</p>
           <h2 class="section-title" id="fit-title">{c.fit.title}</h2>
           <p class="section-lead">{c.fit.lead}</p>
         </div>
 
-        <div class="fit-grid">
+        <div class="fit-grid" data-reveal-stagger>
           {
             c.fit.cards.map((card) => (
-              <article class="card card--pad card--proof">
+              <article class="card card--pad card--proof" data-reveal>
                 <span class="fit-mark">{card.mark}</span>
                 <h3>{card.title}</h3>
                 <p>{card.body}</p>
@@ -135,15 +139,15 @@ const redisPlaygroundHref = `${localizePath("/blog/redis-in-practice-hono-typesc
       </section>
 
       <section class="home-section process-section" aria-labelledby="process-title">
-        <div class="section-header">
+        <div class="section-header" data-reveal>
           <p class="eyebrow">{c.process.eyebrow}</p>
           <h2 class="section-title" id="process-title">{c.process.title}</h2>
         </div>
 
-        <div class="process-line">
+        <div class="process-line" data-reveal-stagger="140">
           {
             c.process.steps.map((step) => (
-              <div>
+              <div data-reveal="fade">
                 <strong>{step.strong}</strong>
                 <span>{step.span}</span>
               </div>
@@ -153,20 +157,20 @@ const redisPlaygroundHref = `${localizePath("/blog/redis-in-practice-hono-typesc
       </section>
 
       <section id="services" class="home-section services-section" aria-labelledby="services-title">
-        <div class="section-header">
+        <div class="section-header" data-reveal>
           <p class="eyebrow">{c.services.eyebrow}</p>
           <h2 class="section-title" id="services-title">{c.services.title}</h2>
           <p class="section-lead">{c.services.lead}</p>
         </div>
 
-        <ul class="services-meta" aria-label={t("a11y.engagementMeta")}>
+        <ul class="services-meta" aria-label={t("a11y.engagementMeta")} data-reveal="fade">
           {c.services.meta.map((item) => <li>{item}</li>)}
         </ul>
 
-        <div class="service-grid">
+        <div class="service-grid" data-reveal-stagger="110">
           {
             c.services.cards.map((card) => (
-              <article class="card card--pad card--proof service-card">
+              <article class="card card--pad card--proof service-card" data-reveal>
                 <p class="service-card__format">{card.format}</p>
                 <h3>{card.title}</h3>
                 <p class="service-card__outcome">{card.outcome}</p>
@@ -190,7 +194,7 @@ const redisPlaygroundHref = `${localizePath("/blog/redis-in-practice-hono-typesc
           }
         </div>
 
-        <aside class="services-cta card card--interactive" aria-labelledby="services-cta-title">
+        <aside class="services-cta card card--interactive" aria-labelledby="services-cta-title" data-reveal="scale">
           <div class="services-cta__copy">
             <p class="eyebrow">{c.services.cta.eyebrow}</p>
             <h3 id="services-cta-title">{c.services.cta.title}</h3>
@@ -215,13 +219,13 @@ const redisPlaygroundHref = `${localizePath("/blog/redis-in-practice-hono-typesc
       {
         cards.length > 0 && (
           <section class="home-section testimonials-section" aria-labelledby="testimonials-title">
-            <div class="section-header">
+            <div class="section-header" data-reveal>
               <p class="eyebrow">{c.testimonials.eyebrow}</p>
               <h2 class="section-title" id="testimonials-title">{c.testimonials.title}</h2>
             </div>
-            <div class="testimonial-grid">
+            <div class="testimonial-grid" data-reveal-stagger="100">
               {cards.map((testimonial) => (
-                <figure class="card card--pad testimonial-card">
+                <figure class="card card--pad testimonial-card" data-reveal>
                   <blockquote>{testimonial.quote}</blockquote>
                   <figcaption>
                     <strong>{testimonial.name}</strong>
@@ -235,16 +239,16 @@ const redisPlaygroundHref = `${localizePath("/blog/redis-in-practice-hono-typesc
       }
 
       <section class="home-section proof-section" aria-labelledby="proof-title">
-        <div class="section-header">
+        <div class="section-header" data-reveal>
           <p class="eyebrow">{c.proof.eyebrow}</p>
           <h2 class="section-title" id="proof-title">{c.proof.title}</h2>
           <p class="section-lead">{c.proof.lead}</p>
         </div>
 
-        <div class="proof-grid">
+        <div class="proof-grid" data-reveal-stagger="110">
           {
             proof.map((post) => (
-              <a class="proof-card card card--proof" href={getPostUrl(post)}>
+              <a class="proof-card card card--proof" href={getPostUrl(post)} data-reveal>
 	                {post.data.heroImage && (
 	                  <Image
 	                    src={post.data.heroImage}
@@ -268,7 +272,7 @@ const redisPlaygroundHref = `${localizePath("/blog/redis-in-practice-hono-typesc
         </div>
       </section>
 
-      <section class="home-section lab-strip card card--interactive" aria-labelledby="lab-title">
+      <section class="home-section lab-strip card card--interactive" aria-labelledby="lab-title" data-reveal="scale">
         <div>
           <p class="eyebrow">{c.lab.eyebrow}</p>
           <h2 class="section-title" id="lab-title">{c.lab.title}</h2>
@@ -731,6 +735,52 @@ const redisPlaygroundHref = `${localizePath("/blog/redis-in-practice-hono-typesc
     background:
       linear-gradient(135deg, rgba(var(--rgb-teal), 0.1), rgba(var(--rgb-paper), 0.92) 42%),
       var(--color-paper);
+  }
+
+  /* === Scroll-driven flourishes (inert under reduced motion) === */
+  @media (prefers-reduced-motion: no-preference) {
+    /* Signature: the process timeline draws its connector and pops each node
+       as the row scrolls in, sequenced by the same --reveal-delay the stagger
+       engine writes onto each step. */
+    .process-line div::before {
+      transform: scaleX(0);
+      transform-origin: left center;
+      transition: transform 0.6s ease var(--reveal-delay, 0ms);
+    }
+    .process-line div.is-visible::before {
+      transform: scaleX(1);
+    }
+    .process-line div::after {
+      transform: scale(0);
+      transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)
+        calc(var(--reveal-delay, 0ms) + 180ms);
+    }
+    .process-line div.is-visible::after {
+      transform: scale(1);
+    }
+
+    /* Proof-card hero art settles from a slight zoom as the card reveals. */
+    .proof-card img {
+      transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms);
+    }
+    .proof-card[data-reveal] img {
+      transform: scale(1.07);
+    }
+    .proof-card[data-reveal].is-visible img {
+      transform: none;
+    }
+  }
+
+  /* On the stacked mobile layout the connector runs vertically, so it must draw
+     top-to-bottom instead of left-to-right. */
+  @media (prefers-reduced-motion: no-preference) and (max-width: 920px) {
+    .process-line div::before {
+      transform: scaleY(0);
+      transform-origin: top center;
+    }
+    .process-line div.is-visible::before {
+      transform: scaleY(1);
+    }
   }
 
   @media (max-width: 920px) {

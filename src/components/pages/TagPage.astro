@@ -49,18 +49,18 @@ const countLabel = count === 1 ? c.articleSingular : c.articlePlural;
         <span class="crumbs__current">{tag}</span>
       </nav>
 
-      <section class="tag-intro" aria-labelledby="tag-title">
-        <p class="eyebrow">{c.topicEyebrow}</p>
-        <h1 id="tag-title">{tag}</h1>
-        <p class="section-lead">
+      <section class="tag-intro" aria-labelledby="tag-title" data-reveal-stagger="90">
+        <p class="eyebrow" data-reveal>{c.topicEyebrow}</p>
+        <h1 id="tag-title" data-reveal>{tag}</h1>
+        <p class="section-lead" data-reveal>
           {count} {countLabel} {c.onThisTopic}
         </p>
       </section>
 
-      <ul class="posts-grid">
+      <ul class="posts-grid" data-reveal-stagger="90">
         {
           taggedPosts.map((post) => (
-            <li>
+            <li data-reveal>
               <a class="post-card card card--proof" href={getPostUrl(post)}>
                 {post.data.heroImage && (
                   <Image

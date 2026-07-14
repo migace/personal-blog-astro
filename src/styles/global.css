@@ -2,6 +2,7 @@
 @import "./typography.css";
 @import "./components.css";
 @import "./article.css";
+@import "./reveal.css";
 
 @font-face {
   font-family: "Atkinson";

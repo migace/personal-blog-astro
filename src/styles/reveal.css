@@ -1,0 +1,62 @@
+/* Scroll-triggered entrance animations.
+
+   Elements marked [data-reveal] start hidden and animate in the first time they
+   enter the viewport. The IntersectionObserver that adds `.is-visible` lives in
+   BaseHead.astro (a bundled, external module script - covered by the CSP
+   `script-src 'self'`, so no inline hash is needed).
+
+   Everything degrades safely:
+   - no JS       -> @media (scripting: none) below unhides everything up front
+   - no observer -> the script unhides everything (feature-detect fallback)
+   - reduced motion -> this whole file is inert; content renders as authored
+
+   Only opacity/transform animate, so the compositor does the work and there is
+   no layout thrash. Stagger is driven by a per-element `--reveal-delay` that the
+   observer sets from the nearest [data-reveal-stagger] ancestor. */
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(22px);
+    transition:
+      opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform;
+  }
+
+  /* Directional / style variants (value of the data-reveal attribute). */
+  [data-reveal="fade"] {
+    transform: none;
+  }
+  [data-reveal="left"] {
+    transform: translateX(-28px);
+  }
+  [data-reveal="right"] {
+    transform: translateX(28px);
+  }
+  [data-reveal="scale"] {
+    transform: scale(0.94);
+  }
+  [data-reveal="rise"] {
+    transform: translateY(40px);
+  }
+
+  [data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+    /* Once the entrance is done, drop the compositor hint so hover/other
+       transforms on the same element stay cheap. */
+    will-change: auto;
+  }
+}
+
+/* No-JS fallback: with scripting disabled the observer never runs, so reveal
+   everything up front. Replaces a <noscript><style> block, which Astro cannot
+   emit from inside <head> (it parses every <style> in the template). */
+@media (scripting: none) {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

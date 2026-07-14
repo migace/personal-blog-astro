@@ -176,3 +176,49 @@ const schemas = structuredData
 
 <!-- Vercel Web Analytics (cookieless, no consent banner needed) -->
 <Analytics />
+
+<!-- Scroll-reveal engine. A bundled (non-inline) module script, so it is emitted
+     as an external /_astro/*.js file and covered by the CSP `script-src 'self'`
+     - no per-build inline hash needed (unlike the theme/code scripts). Reveals
+     any [data-reveal] element as it enters the viewport; stagger delays come from
+     the nearest [data-reveal-stagger] ancestor. Inert under reduced motion, and
+     unhides everything when IntersectionObserver is unavailable. The no-JS case
+     is handled purely in CSS (see @media (scripting: none) in reveal.css). -->
+<script>
+  // Type assertions use `as` (not <T> generics): Astro runs this through esbuild
+  // in TSX mode, where `querySelectorAll<HTMLElement>` reads as a JSX tag.
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const targets = Array.from(document.querySelectorAll("[data-reveal]")) as HTMLElement[];
+
+  if (reduce || !("IntersectionObserver" in window) || targets.length === 0) {
+    // No animation: make sure nothing stays stuck at opacity 0.
+    for (const el of targets) el.classList.add("is-visible");
+  } else {
+    // Assign stagger delays from each [data-reveal-stagger] container. First
+    // writer wins, so an outer container's delays are not clobbered by an inner.
+    const containers = Array.from(
+      document.querySelectorAll("[data-reveal-stagger]")
+    ) as HTMLElement[];
+    for (const container of containers) {
+      const step = Number.parseInt(container.dataset.revealStagger || "", 10) || 90;
+      const items = Array.from(container.querySelectorAll("[data-reveal]")) as HTMLElement[];
+      items.forEach((el, i) => {
+        if (el.style.getPropertyValue("--reveal-delay")) return;
+        el.style.setProperty("--reveal-delay", i * step + "ms");
+      });
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      },
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.06 }
+    );
+
+    for (const el of targets) observer.observe(el);
+  }
+</script>

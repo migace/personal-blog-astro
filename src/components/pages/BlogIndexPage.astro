@@ -59,16 +59,16 @@ const blogStructuredData = {
     <Header lang={lang} />
     <main id="main" class="blog-page">
       <section class="blog-intro" aria-labelledby="blog-title">
-        <div class="section-header">
-          <p class="eyebrow">{c.eyebrow}</p>
-          <h1 id="blog-title">{c.title}</h1>
-          <p class="section-lead">{c.lead}</p>
+        <div class="section-header" data-reveal-stagger="90">
+          <p class="eyebrow" data-reveal>{c.eyebrow}</p>
+          <h1 id="blog-title" data-reveal>{c.title}</h1>
+          <p class="section-lead" data-reveal>{c.lead}</p>
         </div>
 
-        <div class="focus-grid" aria-label={c.browseByTopic}>
+        <div class="focus-grid" aria-label={c.browseByTopic} data-reveal-stagger>
           {
             c.focus.map((item) => (
-              <div class="card card--pad">
+              <div class="card card--pad" data-reveal>
                 <strong>{item.title}</strong>
                 <span>{item.desc}</span>
               </div>
@@ -76,7 +76,7 @@ const blogStructuredData = {
           }
         </div>
 
-        <nav class="topics" aria-label={c.browseByTopic}>
+        <nav class="topics" aria-label={c.browseByTopic} data-reveal="fade">
           <span class="topics__label">{c.browseByTopic}</span>
           <ul>
             {
@@ -95,7 +95,7 @@ const blogStructuredData = {
 
       {
         featuredPost && (
-          <section class="featured-section" aria-labelledby="featured-title">
+          <section class="featured-section" aria-labelledby="featured-title" data-reveal="scale">
             <a class="featured-card card card--proof" href={getPostUrl(featuredPost)}>
               {featuredPost.data.heroImage && (
 	                <Image
@@ -127,10 +127,10 @@ const blogStructuredData = {
       }
 
       <section aria-label={t("a11y.allArticles")}>
-        <ul class="posts-grid">
+        <ul class="posts-grid" data-reveal-stagger="90">
           {
             regularPosts.map((post) => (
-              <li>
+              <li data-reveal>
                 <a class="post-card card card--proof" href={getPostUrl(post)}>
                   {post.data.heroImage && (
 	                    <Image

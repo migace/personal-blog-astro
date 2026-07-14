@@ -56,20 +56,20 @@ const servicesStructuredData = s.cards.map((card) => ({
   <body>
     <Header lang={lang} langHrefs={alternates} />
     <main id="main" class="services-page">
-      <section class="services-hero" aria-labelledby="services-title">
-        <p class="eyebrow">{c.hero.eyebrow}</p>
-        <h1 id="services-title">{c.hero.title}</h1>
-        <p class="section-lead">{c.hero.lead}</p>
+      <section class="services-hero" aria-labelledby="services-title" data-reveal-stagger="90">
+        <p class="eyebrow" data-reveal>{c.hero.eyebrow}</p>
+        <h1 id="services-title" data-reveal>{c.hero.title}</h1>
+        <p class="section-lead" data-reveal>{c.hero.lead}</p>
       </section>
 
-      <ul class="services-meta" aria-label={t("a11y.engagementMeta")}>
+      <ul class="services-meta" aria-label={t("a11y.engagementMeta")} data-reveal="fade">
         {s.meta.map((item) => <li>{item}</li>)}
       </ul>
 
-      <div class="service-grid">
+      <div class="service-grid" data-reveal-stagger="110">
         {
           s.cards.map((card) => (
-            <article class="card card--pad card--proof service-card">
+            <article class="card card--pad card--proof service-card" data-reveal>
               <p class="service-card__format">{card.format}</p>
               <h2>{card.title}</h2>
               <p class="service-card__outcome">{card.outcome}</p>
@@ -93,7 +93,7 @@ const servicesStructuredData = s.cards.map((card) => ({
         }
       </div>
 
-      <aside class="services-cta card card--interactive" aria-labelledby="services-cta-title">
+      <aside class="services-cta card card--interactive" aria-labelledby="services-cta-title" data-reveal="scale">
         <div class="services-cta__copy">
           <p class="eyebrow">{s.cta.eyebrow}</p>
           <h2 id="services-cta-title">{s.cta.title}</h2>

@@ -46,14 +46,14 @@ const contactStructuredData = {
   <body>
     <Header lang={lang} />
     <main id="main" class="contact-page">
-      <section class="contact-hero" aria-labelledby="contact-title">
-        <p class="eyebrow">{c.hero.eyebrow}</p>
-        <h1 id="contact-title">{c.hero.title}</h1>
-        <p class="contact-lead">{c.hero.lead}</p>
+      <section class="contact-hero" aria-labelledby="contact-title" data-reveal-stagger="90">
+        <p class="eyebrow" data-reveal>{c.hero.eyebrow}</p>
+        <h1 id="contact-title" data-reveal>{c.hero.title}</h1>
+        <p class="contact-lead" data-reveal>{c.hero.lead}</p>
       </section>
 
       <section class="contact-grid" aria-label={t("a11y.contactSection")}>
-        <form class="contact-form card card--pad" id="contact-form" novalidate>
+        <form class="contact-form card card--pad" id="contact-form" novalidate data-reveal="left">
           <div class="field">
             <label for="name">{c.form.name}</label>
             <input id="name" name="name" type="text" autocomplete="name" required />
@@ -84,7 +84,7 @@ const contactStructuredData = {
           </div>
         </form>
 
-        <aside class="contact-aside">
+        <aside class="contact-aside" data-reveal="right">
           <div class="card card--pad">
             <p class="eyebrow eyebrow--deep">{c.aside.directLabel}</p>
             <ul class="contact-channels">

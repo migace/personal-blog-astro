@@ -137,6 +137,26 @@ const breadcrumbStructuredData = {
 				border-radius: var(--radius-lg);
 				box-shadow: var(--shadow-lift);
 			}
+			/* Continuous hero parallax, purely CSS scroll-driven. Progressive
+			   enhancement: only browsers with a view() timeline get it, and it
+			   is disabled under reduced motion. No scroll listeners, no JS. */
+			@media (prefers-reduced-motion: no-preference) {
+				@supports (animation-timeline: view()) {
+					.hero-image img {
+						animation: hero-parallax linear both;
+						animation-timeline: view();
+						animation-range: entry 0% exit 100%;
+					}
+					@keyframes hero-parallax {
+						from {
+							transform: translateY(-14px) scale(1.03);
+						}
+						to {
+							transform: translateY(14px) scale(1.03);
+						}
+					}
+				}
+			}
 			.prose {
 				width: var(--container-content);
 				max-width: calc(100% - 2em);
@@ -419,8 +439,8 @@ const breadcrumbStructuredData = {
 					}
 				</div>
 				<div class="prose">
-					<div class="title">
-						<div class="date">
+					<div class="title" data-reveal-stagger="80">
+						<div class="date" data-reveal>
 							<FormattedDate date={pubDate} lang={lang as Lang} />
 							{readingTime && <span class="reading-time">{readingTime} {t("post.readingTime")}</span>}
 							{
@@ -431,10 +451,10 @@ const breadcrumbStructuredData = {
 								)
 							}
 						</div>
-						<h1>{title}</h1>
+						<h1 data-reveal>{title}</h1>
 						{
 							tags && tags.length > 0 && (
-								<div class="post-topics">
+								<div class="post-topics" data-reveal>
 									{tags.map((tag) => (
 										<a class="tag" href={localizePath(`/blog/tags/${slugifyTag(tag)}/`, lang as Lang)}>
 											{tag}
