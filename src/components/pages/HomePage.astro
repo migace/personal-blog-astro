@@ -3,6 +3,7 @@ import { Image } from "astro:assets";
 import BaseHead from "../BaseHead.astro";
 import Header from "../Header.astro";
 import Footer from "../Footer.astro";
+import HeroPipeline from "../HeroPipeline.astro";
 import FormattedDate from "../FormattedDate.astro";
 import { SITE_AUTHOR, SITE_TITLE } from "../../consts";
 import { experience, testimonials } from "../../data/experience";
@@ -98,6 +99,7 @@ const redisPlaygroundHref = `${localizePath("/blog/redis-in-practice-hono-typesc
           aria-label={c.panelLabel}
           data-reveal="right"
         >
+          <HeroPipeline />
           <p class="eyebrow eyebrow--deep">{c.panelLabel}</p>
           <ol class="delivery-steps" data-reveal-stagger="120">
             {

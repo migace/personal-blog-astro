@@ -1,0 +1,344 @@
+---
+// Ambient hero visual: a live agentic-AI pipeline drawn on <canvas>.
+// intent -> reasoning (LLM) -> knowledge base -> actions (business systems)
+// -> verify -> outcome, with the reasoning core emphasised. It is decorative
+// but meaningful - it depicts grounded, verified AI in production, which is the
+// consulting story. No React: a bundled module script (external /_astro/*.js,
+// so covered by the CSP `script-src 'self'`). Fully inert under reduced motion,
+// theme-aware via the same CSS tokens as the rest of the site, and paused when
+// off-screen or the tab is hidden.
+---
+
+<div class="hero-pipeline" data-hero-pipeline aria-hidden="true">
+  <canvas></canvas>
+</div>
+
+<style>
+  .hero-pipeline {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    min-height: 240px;
+    margin-bottom: var(--space-5, 1.25rem);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-md);
+    background:
+      radial-gradient(120% 120% at 80% 0%, rgba(var(--rgb-teal), 0.08), transparent 60%),
+      rgba(var(--rgb-canvas), 0.4);
+    overflow: hidden;
+  }
+
+  .hero-pipeline canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  @media (max-width: 920px) {
+    .hero-pipeline {
+      aspect-ratio: 16 / 10;
+    }
+  }
+</style>
+
+<script>
+  // Type assertions use `as` (not <T> generics): Astro compiles this through
+  // esbuild in TSX mode, where `querySelector<HTMLElement>` reads as a JSX tag.
+  const root = document.querySelector("[data-hero-pipeline]") as HTMLElement | null;
+  const canvas = root?.querySelector("canvas") as HTMLCanvasElement | null;
+  const ctx = canvas?.getContext("2d") ?? null;
+
+  if (root && canvas && ctx) {
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    // ---- palette read from CSS tokens so the canvas follows theme + toggle ----
+    let PAL = { ink: "", muted: "", line: "", paper: "", accent: "", teal: "", amber: "", lime: "" };
+    function readPalette() {
+      const cs = getComputedStyle(document.documentElement);
+      const g = (n: string) => cs.getPropertyValue(n).trim();
+      PAL = {
+        ink: g("--color-ink"),
+        muted: g("--color-muted"),
+        line: g("--color-line"),
+        paper: g("--color-paper"),
+        accent: g("--color-accent"),
+        teal: g("--color-teal"),
+        amber: g("--color-amber"),
+        // --color-lime is text-unsafe on light; nudge via a fixed on-brand green.
+        lime: g("--color-lime"),
+      };
+    }
+    readPalette();
+
+    // ---- sizing ----
+    let W = 0, H = 0;
+    function resize() {
+      const r = root!.getBoundingClientRect();
+      W = r.width;
+      H = r.height;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas!.width = Math.round(W * dpr);
+      canvas!.height = Math.round(H * dpr);
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      layout();
+    }
+
+    // ---- graph ----
+    type Node = { nx: number; ny: number; label: string; hub?: boolean; x: number; y: number; pulse: number; glow: number; glowColor?: string };
+    const NODES: Record<string, Node> = {
+      intent: { nx: 0.08, ny: 0.5, label: "intent", x: 0, y: 0, pulse: 0, glow: 0 },
+      agent: { nx: 0.42, ny: 0.5, label: "reasoning", hub: true, x: 0, y: 0, pulse: 0, glow: 0 },
+      kb: { nx: 0.3, ny: 0.15, label: "knowledge", x: 0, y: 0, pulse: 0, glow: 0 },
+      tools: { nx: 0.73, ny: 0.26, label: "actions", x: 0, y: 0, pulse: 0, glow: 0 },
+      verify: { nx: 0.73, ny: 0.78, label: "verify", x: 0, y: 0, pulse: 0, glow: 0 },
+      out: { nx: 0.94, ny: 0.5, label: "outcome", x: 0, y: 0, pulse: 0, glow: 0 },
+    };
+    const EDGES = [
+      ["intent", "agent"], ["agent", "kb"], ["agent", "tools"],
+      ["agent", "verify"], ["verify", "out"],
+    ];
+
+    function layout() {
+      const padX = Math.max(40, W * 0.07);
+      const padY = Math.max(28, H * 0.12);
+      const iw = W - padX * 2, ih = H - padY * 2;
+      for (const k in NODES) {
+        NODES[k].x = padX + NODES[k].nx * iw;
+        NODES[k].y = padY + NODES[k].ny * ih;
+      }
+    }
+
+    // ---- packets ----
+    type Packet = { path: string[]; seg: number; t: number; speed: number; kind: string };
+    const packets: Packet[] = [];
+    let spawnTimer = 0;
+    let seq = 0;
+
+    function spawn() {
+      seq++;
+      const pass = (seq * 2654435761 % 100) / 100 < 0.75; // ~75% ship on first pass
+      const base = ["intent", "agent", "kb", "agent", "tools", "agent", "verify"];
+      const path = pass ? base.concat(["out"]) : base.concat(["agent", "verify", "out"]);
+      packets.push({ path, seg: 0, t: 0, speed: 0.95 + (seq % 5) * 0.04, kind: pass ? "pass" : "flag" });
+    }
+
+    function packetColor(p: Packet) {
+      if (p.kind === "pass") return PAL.lime;
+      if (p.kind === "flag") return PAL.amber;
+      return PAL.teal;
+    }
+
+    // ---- drawing helpers ----
+    function rr(x: number, y: number, w: number, h: number, r: number) {
+      ctx!.beginPath();
+      ctx!.moveTo(x + r, y);
+      ctx!.arcTo(x + w, y, x + w, y + h, r);
+      ctx!.arcTo(x + w, y + h, x, y + h, r);
+      ctx!.arcTo(x, y + h, x, y, r);
+      ctx!.arcTo(x, y, x + w, y, r);
+      ctx!.closePath();
+    }
+    function ease(t: number) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+    function hex(h: string): [number, number, number] | null {
+      h = (h || "").replace("#", "");
+      if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+      if (h.length !== 6) return null;
+      return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+    }
+    function mix(h1: string, h2: string, amt: number) {
+      const c1 = hex(h1), c2 = hex(h2);
+      if (!c1 || !c2) return h1;
+      const r = Math.round(c1[0] + (c2[0] - c1[0]) * amt);
+      const g = Math.round(c1[1] + (c2[1] - c1[1]) * amt);
+      const b = Math.round(c1[2] + (c2[2] - c1[2]) * amt);
+      return "rgb(" + r + "," + g + "," + b + ")";
+    }
+
+    function drawEdge(a: string, b: string) {
+      const na = NODES[a], nb = NODES[b];
+      ctx!.strokeStyle = PAL.line;
+      ctx!.lineWidth = 1.5;
+      ctx!.beginPath();
+      ctx!.moveTo(na.x, na.y);
+      ctx!.lineTo(nb.x, nb.y);
+      ctx!.stroke();
+    }
+
+    function drawNode(n: Node) {
+      ctx!.font = "600 13px ui-monospace, SFMono-Regular, Menlo, monospace";
+      const tw = ctx!.measureText(n.label).width;
+      const w = Math.max(62, tw + 30), h = 32;
+      const x = n.x - w / 2, y = n.y - h / 2;
+
+      if (n.pulse > 0) {
+        ctx!.save();
+        ctx!.globalAlpha = n.pulse * 0.5;
+        ctx!.strokeStyle = n.glowColor || PAL.teal;
+        ctx!.lineWidth = 2;
+        const grow = (1 - n.pulse) * 14;
+        rr(x - grow, y - grow, w + grow * 2, h + grow * 2, 11 + grow);
+        ctx!.stroke();
+        ctx!.restore();
+      }
+
+      rr(x, y, w, h, 8);
+      ctx!.fillStyle = PAL.paper;
+      ctx!.fill();
+      if (n.hub) {
+        ctx!.save();
+        ctx!.globalAlpha = 0.1 + n.glow * 0.12;
+        ctx!.fillStyle = PAL.accent;
+        ctx!.fill();
+        ctx!.restore();
+      }
+      ctx!.lineWidth = n.hub ? 2 : 1.5;
+      ctx!.strokeStyle = n.glow > 0
+        ? mix(n.hub ? PAL.accent : PAL.line, n.glowColor || PAL.accent, n.glow)
+        : (n.hub ? PAL.accent : PAL.line);
+      ctx!.stroke();
+
+      ctx!.beginPath();
+      ctx!.arc(x + 12, n.y, 2.9, 0, Math.PI * 2);
+      ctx!.fillStyle = n.hub ? PAL.accent : PAL.teal;
+      ctx!.fill();
+
+      ctx!.fillStyle = PAL.ink;
+      ctx!.textAlign = "left";
+      ctx!.textBaseline = "middle";
+      ctx!.fillText(n.label, x + 21, n.y + 0.5);
+    }
+
+    function drawPacket(p: Packet) {
+      const a = NODES[p.path[p.seg]], b = NODES[p.path[p.seg + 1]];
+      if (!a || !b) return;
+      const x = a.x + (b.x - a.x) * ease(p.t);
+      const y = a.y + (b.y - a.y) * ease(p.t);
+      const col = packetColor(p);
+      const tx = a.x + (b.x - a.x) * ease(Math.max(0, p.t - 0.12));
+      const ty = a.y + (b.y - a.y) * ease(Math.max(0, p.t - 0.12));
+      const grad = ctx!.createLinearGradient(tx, ty, x, y);
+      grad.addColorStop(0, "transparent");
+      grad.addColorStop(1, col);
+      ctx!.strokeStyle = grad;
+      ctx!.lineWidth = 3;
+      ctx!.lineCap = "round";
+      ctx!.beginPath();
+      ctx!.moveTo(tx, ty);
+      ctx!.lineTo(x, y);
+      ctx!.stroke();
+
+      ctx!.save();
+      ctx!.shadowColor = col;
+      ctx!.shadowBlur = 12;
+      ctx!.beginPath();
+      ctx!.arc(x, y, 4.4, 0, Math.PI * 2);
+      ctx!.fillStyle = col;
+      ctx!.fill();
+      ctx!.restore();
+    }
+
+    function render() {
+      ctx!.clearRect(0, 0, W, H);
+      for (const e of EDGES) drawEdge(e[0], e[1]);
+      for (const p of packets) drawPacket(p);
+      for (const k in NODES) drawNode(NODES[k]);
+    }
+
+    // ---- loop ----
+    let last = 0;
+    let rafId = 0;
+    let onScreen = true;
+
+    function update(dt: number) {
+      spawnTimer -= dt;
+      if (spawnTimer <= 0 && packets.length < 4) {
+        spawnTimer = 1.15;
+        spawn();
+      }
+      for (const k in NODES) {
+        NODES[k].pulse = Math.max(0, NODES[k].pulse - dt * 1.6);
+        NODES[k].glow = Math.max(0, NODES[k].glow - dt * 1.8);
+      }
+      for (let i = packets.length - 1; i >= 0; i--) {
+        const p = packets[i];
+        p.t += dt * p.speed;
+        if (p.t >= 1) {
+          p.t = 0;
+          p.seg++;
+          const arrived = NODES[p.path[p.seg]];
+          if (arrived) {
+            arrived.pulse = 1;
+            arrived.glow = 1;
+            arrived.glowColor = packetColor(p);
+          }
+          if (p.seg >= p.path.length - 1) packets.splice(i, 1);
+        }
+      }
+    }
+
+    function frame(now: number) {
+      if (!last) last = now;
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      update(dt);
+      render();
+      rafId = requestAnimationFrame(frame);
+    }
+
+    function play() {
+      if (rafId || prefersReduced.matches || !onScreen || document.hidden) return;
+      last = 0;
+      rafId = requestAnimationFrame(frame);
+    }
+    function stop() {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = 0;
+    }
+
+    function staticFrame() {
+      packets.length = 0;
+      packets.push({ path: ["intent", "agent", "kb", "agent"], seg: 1, t: 0.5, speed: 0, kind: "pass" });
+      packets.push({ path: ["agent", "verify", "out"], seg: 0, t: 0.55, speed: 0, kind: "flag" });
+      NODES.agent.pulse = 0.6;
+      NODES.agent.glow = 0.7;
+      NODES.agent.glowColor = PAL.accent;
+      render();
+    }
+
+    // ---- wiring ----
+    new ResizeObserver(() => {
+      resize();
+      if (prefersReduced.matches) staticFrame();
+    }).observe(root);
+
+    new IntersectionObserver((entries) => {
+      onScreen = entries[0].isIntersecting;
+      if (onScreen) play();
+      else stop();
+    }, { threshold: 0.05 }).observe(root);
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stop();
+      else play();
+    });
+
+    // Re-read palette when the site theme changes (toggle sets data-theme;
+    // matchMedia covers the OS preference for visitors without a stored choice).
+    new MutationObserver(() => {
+      readPalette();
+      if (prefersReduced.matches || !rafId) render();
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      readPalette();
+      if (prefersReduced.matches || !rafId) render();
+    });
+    prefersReduced.addEventListener("change", () => {
+      if (prefersReduced.matches) { stop(); staticFrame(); }
+      else play();
+    });
+
+    resize();
+    if (prefersReduced.matches) staticFrame();
+    else play();
+  }
+</script>
