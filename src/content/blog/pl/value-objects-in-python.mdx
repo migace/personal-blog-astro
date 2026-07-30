@@ -1,6 +1,6 @@
 ---
 title: "Value objects w Pythonie: spraw, by błędne stany były niemożliwe"
-description: "Praktyczny przewodnik po value objectach w Pythonie oparty na przykładach - frozen dataclasses, samowalidacja, zachowanie zamiast prymitywów, studium przypadku z koszyka, dobre praktyki i kiedy ich nie używać."
+description: "Praktyczny przewodnik po value objectach w Pythonie - frozen dataclasses, samowalidacja, zachowanie zamiast prymitywów i kiedy odpuścić ten wzorzec."
 pubDate: "June 28 2026"
 heroImage: "../../../assets/heroes/value-objects-python.webp"
 heroAlt: "Krystaliczne sześciany reprezentujące niemutowalne value objecty dla pieniędzy, e-maila i dat, połączone ze sobą na ciemnym tle"
@@ -515,5 +515,3 @@ Wymieniasz odrobinę struktury z góry na eliminację całej kategorii sesji deb
 - **Parsuj na granicy**: zamień prymitywy na value objecty raz, a potem ufaj typom wszędzie w głąb.
 - Umieszczaj zachowanie na obiekcie, używaj konstruktorów `classmethod` i trzymaj każdy value object skupiony na jednym pojęciu.
 - Odpuść wzorzec dla jednorazowych prymitywów, encji z cyklem życia albo przypadków, gdzie alias `NewType` to całe bezpieczeństwo, którego potrzebowałeś.
-
-Jeśli zastanawiasz się, jak daleko pchnąć value objecty w realnym serwisie w Pythonie - albo gdzie w twojej domenie powinna leżeć granica między value objectami a encjami - [napisz do mnie](/pl/contact/). Chętnie przegadam te kompromisy.

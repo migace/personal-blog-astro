@@ -1,0 +1,138 @@
+---
+title: "Anatomy of an Astro Blog: Islands, i18n, and a Strict CSP"
+description: "A personal blog is a portfolio where every decision shows: static Astro, islands hydrated on demand, bilingual routing, and a hash-based CSP."
+pubDate: "July 30 2026"
+heroImage: "../../assets/heroes/anatomy-astro-blog.webp"
+heroAlt: "Diagram of a grid of static pages with one glowing hydrated island and a shield representing a strict Content Security Policy"
+tags: ["Engineering Practice", "Developer Tools"]
+---
+
+> "A personal blog is a weekend project."
+
+It can be. Mine started as one: the official Astro blog starter, deployed in an afternoon, with `BaseHead.astro` and `FormattedDate.astro` still carrying the starter's fingerprints. You could stop there and have a perfectly fine blog.
+
+I kept going, and not because the starter was lacking. A personal site is the one codebase where nobody else picks the constraints. No legacy contract, no team conventions to inherit, no product deadline that forces the pragmatic-but-ugly path. Which means every decision in the repo is a decision I actually made - and anyone who reads the source can see exactly what I optimize for when the excuses are gone.
+
+This post is a tour of those decisions: what shipped, what it cost, and one piece of debt I decided to keep on purpose.
+
+---
+
+## Every Page Is Static, and Most Pages Ship No Framework
+
+The whole site builds to plain HTML. The config makes that a rule rather than a habit:
+
+```js
+export default defineConfig({
+  site: "https://www.tiptopdesign.pl",
+  // Static by default: a new page cannot silently become SSR by forgetting
+  // `export const prerender = true`. The API endpoints opt out individually
+  // with `prerender = false`; the Vercel adapter serves them on demand.
+  output: "static",
+  adapter: vercel(),
+});
+```
+
+The comment is in the actual `astro.config.mjs`, and it encodes the failure mode I was defending against. With `output: "server"` and per-page opt-in, forgetting one `prerender` export turns a static page into a serverless function - same URL, same markup, quietly slower and more expensive. Flipping the default means the only dynamic routes are the two API endpoints that genuinely need a server: the contact form and the newsletter signup, both backed by Resend, both rate-limited per IP.
+
+React exists in the dependency tree, but it reaches the browser only where a post embeds an interactive widget. The hydration directive lives in a small Astro wrapper, never in the article file:
+
+```astro
+---
+import CacheAsidePlayground from "./CacheAsidePlayground";
+---
+
+<div class="interactive-lab-slot">
+  <CacheAsidePlayground client:visible />
+</div>
+```
+
+`client:visible` means the bundle downloads when the reader scrolls to the widget, not on page load. A reader who opens the [Redis case study](/blog/redis-in-practice-hono-typescript/) and leaves after the intro never pays for React at all. Every page that has no widget - the home page, the index, most articles - ships zero framework JavaScript.
+
+The rest of the performance work is unglamorous: two self-hosted `woff2` files with `font-display: swap`, hero images as WebP under 150 KB rendered through `astro:assets` with a real `srcset`, and cookieless Vercel Analytics instead of a tag manager. There is no consent banner because there is nothing to consent to.
+
+---
+
+## Two Languages, One Slug, No CMS
+
+The site is bilingual: English at the root, Polish under `/pl/`. I did not want a CMS, a translation service, or frontmatter full of cross-reference IDs, so the pairing convention is the file system:
+
+```
+src/content/blog/redis-in-practice-hono-typescript.mdx      → /blog/...
+src/content/blog/pl/redis-in-practice-hono-typescript.mdx   → /pl/blog/...
+```
+
+Same slug, one folder deeper. The schema in `content.config.ts` allows an explicit `translationKey`, but no post has ever needed one - the shared filename is the key, and a helper resolves the pair at build time. That pairing drives everything downstream: the language switcher in the header knows where "this page, in Polish" lives, and `BaseHead` emits `hreflang` alternates plus `x-default` for every paired page, so Google serves the right language instead of guessing.
+
+The convention has one wart I stopped fighting. A Polish post sits one directory deeper, so every relative path in it needs an extra `../` - the hero image becomes `"../../../assets/heroes/..."` and component imports shift the same way. It is exactly the kind of mechanical rule a human forgets and a build catches: the Zod schema resolves `heroImage` through Astro's `image()` helper, so a wrong path fails `astro check` instead of shipping a broken page. I have leaned on that failure more than once.
+
+One more choice worth defending: the Polish versions carry a visible "AI beta" note admitting they are machine-assisted translations. Hiding that would read fine right up until a Polish engineer hit a clumsy sentence and started doubting the technical content too. The disclosure costs a little polish and buys back the benefit of the doubt.
+
+---
+
+## A Hash-Based CSP Lets the Browser Break Your Site Silently
+
+The strictest decision in the repo is the Content-Security-Policy header. `script-src` has no `'unsafe-inline'` - only `'self'` plus five SHA-256 hashes, one for each inline script that legitimately exists. An injected `<script>` simply does not execute, which for a static blog with two form endpoints is about as close to closing the XSS door as it gets.
+
+Keeping the hash list at five took two deliberate moves. First, a Vite setting forces every hoisted and island script out of the HTML:
+
+```js
+vite: {
+  // Force hoisted/island scripts to be emitted as external /_astro/*.js files
+  // instead of being inlined into the HTML. Inline <script> would otherwise
+  // need a per-build hash in the CSP; external same-origin scripts are covered
+  // by `script-src 'self'`.
+  build: { assetsInlineLimit: 0 },
+},
+```
+
+Second, the inline scripts that must stay inline - the pre-paint theme script, the code-card enhancer, the contact form logic - read their translated strings from `<script type="application/json">` data blocks instead of having strings interpolated into the code. Data blocks are not governed by `script-src`, so the executable scripts have static bodies and therefore stable hashes. Without that separation, every copy tweak in `ui.ts` would change a script body and invalidate a hash.
+
+Here is the part that makes this a commitment rather than a checkbox: when a hash is wrong, nothing fails. The build is green, the deploy is green, and the browser silently refuses to run that one script. In practice that looks like a theme flash on load, a contact form that swallows clicks, or code blocks that lose their copy buttons - each one a production symptom with no error anywhere in CI. The repo has a `pnpm csp:hashes` script that scans the built output and prints the exact `script-src` value, and a doc that says, in effect, *after touching any inline script or upgrading Astro, run this and check the deployed console for CSP violations*. That is a manual step in an otherwise automated pipeline, and I am not fully at peace with it. For a team project I would wire the hash generation into the build or drop to a laxer policy before relying on someone's memory. Here, where I am the only person deploying, the discipline holds - so far.
+
+---
+
+## The Social Preview Pipeline Nobody Sees
+
+Every hero image on the site is WebP. Every social preview is a JPEG. That duplication exists because of one unglamorous fact: LinkedIn does not reliably render WebP `og:image`, and LinkedIn is exactly where a consulting-oriented engineering blog gets shared.
+
+So there is a small sharp script, run as `pnpm og`, that crops each post's hero to a 1200×630 JPEG:
+
+```js
+await sharp(path.join(HEROES_DIR, heroFile))
+  .resize(1200, 630, { fit: "cover" })
+  .jpeg({ quality: 84 })
+  .toFile(path.join(OUT_DIR, `${slug}.jpg`));
+```
+
+The generated files are committed to `public/og/`, one per slug; translations share the slug and therefore the preview. If the file is missing, `BaseHead` falls back to a generic default instead of breaking - the post just looks anonymous when shared, which is its own quiet punishment for skipping the step.
+
+This is the kind of machinery that earns nothing on the page and only shows up when it is absent: a link pasted into LinkedIn or Slack either unfurls into a real card or it does not, and people click accordingly.
+
+---
+
+## The Debt I Decided to Keep
+
+Every code block on this blog renders as an interactive card - language pill, copy button, line-number toggle, auto-collapse past fourteen lines. All of that is done by an inline script in the article layout that rewrites every `<pre>` in the DOM after the page loads. It is roughly two hundred lines of client-side DOM surgery, and the architecturally clean version is obvious: do it at build time as a rehype plugin, ship the final markup, delete the runtime work.
+
+I have not done it, and the honest reason is leverage. The runtime version took an evening and has survived every Astro upgrade untouched, because it depends only on the rendered HTML. A rehype plugin plugs into the MDX pipeline's AST and inherits maintenance coupling with it. On a client project the calculus flips - multiply the wasted main-thread work by real traffic and the build-time version wins easily. Here it costs a few milliseconds on an article page, and I would rather spend the evening writing.
+
+The test suite tells a similar story. There is exactly one Vitest file, covering the post-pairing and URL helpers - the logic where a silent mistake would break `hreflang` pairs or OG paths across the whole site. The rest is covered by `astro check`, the Zod schema on frontmatter, and the fact that a static site has very few ways to fail at runtime. I know what a serious test pyramid looks like; this repo does not need one, and pretending otherwise would be testing theater.
+
+---
+
+## The Most Important Takeaway
+
+None of these decisions is impressive alone. Static output, a couple of lazy islands, filename-keyed translations, hashed inline scripts, a sharp crop for LinkedIn - each is a footnote. What they add up to is the actual portfolio: proof of which trade-offs I make when nobody is forcing my hand, visible to anyone who opens the repo or DevTools.
+
+A blog is not the thing you build next to the work. It is the work, with your name on every constraint.
+
+---
+
+## Summary
+
+- The site builds fully static (`output: "static"`); only the contact and newsletter endpoints run server-side, and a new page cannot become SSR by accident.
+- React hydrates only where a post embeds an interactive widget, via `client:visible` in a dedicated wrapper - pages without widgets ship no framework JavaScript.
+- Polish and English posts are paired by a shared filename slug, which powers the language switcher and `hreflang` alternates without a CMS or manual cross-references.
+- `script-src` uses five SHA-256 hashes instead of `'unsafe-inline'`; `assetsInlineLimit: 0` and JSON data blocks keep those hashes stable, and `pnpm csp:hashes` regenerates them - the price is a manual step where failure is silent.
+- Social previews are JPEG copies of the WebP heroes because LinkedIn will not reliably render WebP `og:image`; `pnpm og` regenerates them.
+- The interactive code cards are deliberate runtime debt: a build-time rehype plugin would be cleaner, but the client-side version is cheaper to own at this scale.

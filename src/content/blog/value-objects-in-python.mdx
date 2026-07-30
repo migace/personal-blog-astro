@@ -1,6 +1,6 @@
 ---
 title: "Value Objects in Python: Make Invalid States Unrepresentable"
-description: "A practical, example-driven guide to value objects in Python - frozen dataclasses, self-validation, behavior over primitives, plus a checkout case study, best practices, and when not to use them."
+description: "A practical guide to value objects in Python - frozen dataclasses, self-validation, behavior over primitives, and when not to use the pattern."
 pubDate: "June 28 2026"
 heroImage: "../../assets/heroes/value-objects-python.webp"
 heroAlt: "Crystalline cubes representing immutable value objects for money, email, and dates locked together on a dark background"
@@ -514,5 +514,3 @@ You are trading a tiny amount of upfront structure for the elimination of an ent
 - **Parse at the boundary**: convert primitives to value objects once, then trust the types everywhere inward.
 - Put behavior on the object, use `classmethod` constructors, and keep each value object focused on one concept.
 - Skip the pattern for throwaway primitives, entities with a lifecycle, or cases where a `NewType` alias is all the safety you needed.
-
-If you are weighing how far to push value objects in a real Python service - or where the boundary between value objects and entities should sit in your domain - [get in touch](/contact/). I am happy to talk through the trade-offs.

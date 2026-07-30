@@ -10,6 +10,7 @@ interface Props {
 const { lang = "en" } = Astro.props;
 const t = useTranslations(lang);
 const today = new Date();
+const rssHref = lang === "pl" ? "/pl/rss.xml" : "/rss.xml";
 ---
 
 <footer>
@@ -26,6 +27,25 @@ const today = new Date();
         michal.gacek@tiptopdesign.pl
       </a>
       <SocialLinks />
+      <a class="footer-rss" href={rssHref}>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M4 11a9 9 0 0 1 9 9"></path>
+          <path d="M4 4a16 16 0 0 1 16 16"></path>
+          <circle cx="5" cy="19" r="1"></circle>
+        </svg>
+        {t("footer.rss")}
+      </a>
     </div>
 
     <p class="footer-legal">
@@ -75,6 +95,21 @@ const today = new Date();
     margin: 0;
     color: var(--color-muted);
     font-size: 0.85rem;
+  }
+
+  .footer-rss {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-muted);
+    font-size: 0.85rem;
+    text-decoration: none;
+  }
+
+  .footer-rss:hover,
+  .footer-rss:focus-visible {
+    color: var(--accent);
+    text-decoration: underline;
   }
 
   @media (max-width: 760px) {

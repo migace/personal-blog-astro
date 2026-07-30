@@ -1,0 +1,139 @@
+---
+title: "Anatomia bloga na Astro: wyspy, i18n i restrykcyjne CSP"
+description: "Prywatny blog to portfolio, w którym widać każdą decyzję: statyczne Astro, wyspy hydratowane na żądanie, dwujęzyczny routing i CSP oparte na hashach."
+pubDate: "July 30 2026"
+heroImage: "../../../assets/heroes/anatomy-astro-blog.webp"
+heroAlt: "Diagram siatki statycznych stron z jedną podświetloną hydratowaną wyspą i tarczą symbolizującą restrykcyjne Content Security Policy"
+tags: ["Engineering Practice", "Developer Tools"]
+lang: "pl"
+---
+
+> "Prywatny blog to projekt na weekend."
+
+Może być. Mój tak zaczął: oficjalny starter blogowy Astro, wdrożony w jedno popołudnie, z `BaseHead.astro` i `FormattedDate.astro` noszącymi jeszcze ślady szablonu. Można było na tym poprzestać i mieć zupełnie przyzwoitego bloga.
+
+Poszedłem dalej — i wcale nie dlatego, że starter był za słaby. Prywatna strona to jedyna baza kodu, w której nikt inny nie wybiera za mnie ograniczeń. Nie ma odziedziczonego legacy, nie ma konwencji zespołu, nie ma deadline'u, który wymusza ścieżkę "brzydko, ale działa". Każda decyzja w tym repo jest więc decyzją, którą naprawdę podjąłem — a kto zajrzy do źródeł, zobaczy dokładnie, na czym mi zależy, kiedy kończą się wymówki.
+
+Ten wpis to przegląd tych decyzji: co poszło na produkcję, ile kosztowało i który dług techniczny zostawiłem świadomie.
+
+---
+
+## Każda strona jest statyczna, a większość nie wysyła żadnego frameworka
+
+Cała strona buduje się do zwykłego HTML-a. Konfiguracja robi z tego regułę, nie przyzwyczajenie:
+
+```js
+export default defineConfig({
+  site: "https://www.tiptopdesign.pl",
+  // Static by default: a new page cannot silently become SSR by forgetting
+  // `export const prerender = true`. The API endpoints opt out individually
+  // with `prerender = false`; the Vercel adapter serves them on demand.
+  output: "static",
+  adapter: vercel(),
+});
+```
+
+Ten komentarz siedzi w prawdziwym `astro.config.mjs` i opisuje scenariusz awarii, przed którym się broniłem. Przy `output: "server"` i opt-inie per strona wystarczy zapomnieć jednego eksportu `prerender`, żeby statyczna strona stała się funkcją serverless — ten sam URL, ten sam markup, po cichu wolniej i drożej. Odwrócenie domyślnej wartości sprawia, że dynamiczne są tylko dwa endpointy API, które naprawdę potrzebują serwera: formularz kontaktowy i zapis do newslettera. Oba stoją na Resend i oba mają rate limiting per IP.
+
+React jest w zależnościach, ale do przeglądarki trafia wyłącznie tam, gdzie wpis osadza interaktywny widget. Dyrektywa hydratacji mieszka w małym wrapperze Astro, nigdy w pliku artykułu:
+
+```astro
+---
+import CacheAsidePlayground from "./CacheAsidePlayground";
+---
+
+<div class="interactive-lab-slot">
+  <CacheAsidePlayground client:visible />
+</div>
+```
+
+`client:visible` oznacza, że bundle pobiera się dopiero wtedy, gdy czytelnik doscrolluje do widgetu — nie przy wejściu na stronę. Ktoś, kto otworzy [case study o Redisie](/pl/blog/redis-in-practice-hono-typescript/) i wyjdzie po wstępie, w ogóle nie płaci za Reacta. Strony bez widgetów — główna, indeks bloga, większość artykułów — nie wysyłają ani bajta frameworkowego JavaScriptu.
+
+Reszta pracy nad wydajnością jest zupełnie nieefektowna: dwa self-hostowane pliki `woff2` z `font-display: swap`, hero w WebP poniżej 150 KB renderowane przez `astro:assets` z prawdziwym `srcset` i bezcookiesowa analityka Vercela zamiast tag managera. Nie ma banera zgód, bo nie ma na co wyrażać zgody.
+
+---
+
+## Dwa języki, jeden slug, zero CMS-a
+
+Strona jest dwujęzyczna: angielski w rootcie, polski pod `/pl/`. Nie chciałem CMS-a, usługi tłumaczeniowej ani frontmattera pełnego identyfikatorów łączących wersje, więc parowanie opiera się na systemie plików:
+
+```
+src/content/blog/redis-in-practice-hono-typescript.mdx      → /blog/...
+src/content/blog/pl/redis-in-practice-hono-typescript.mdx   → /pl/blog/...
+```
+
+Ten sam slug, folder głębiej. Schema w `content.config.ts` przewiduje jawny `translationKey`, ale żaden wpis nigdy go nie potrzebował — kluczem jest wspólna nazwa pliku, a helper skleja parę w czasie builda. Z tego parowania wynika cała reszta: przełącznik języka w nagłówku wie, gdzie mieszka "ta strona po polsku", a `BaseHead` emituje alternaty `hreflang` plus `x-default` dla każdej pary, więc Google serwuje właściwy język zamiast zgadywać.
+
+Konwencja ma jedną skazę, z którą przestałem walczyć. Polski wpis leży katalog głębiej, więc każda względna ścieżka potrzebuje dodatkowego `../` — hero staje się `"../../../assets/heroes/..."`, importy komponentów przesuwają się tak samo. To dokładnie ten rodzaj mechanicznej reguły, o której człowiek zapomina, a build ją łapie: schema Zod rozwiązuje `heroImage` przez helper `image()` Astro, więc zła ścieżka wywala `astro check` zamiast wypuścić zepsutą stronę. Korzystałem z tej siatki bezpieczeństwa więcej niż raz.
+
+Jeszcze jedna decyzja, której bronię: polskie wersje noszą widoczną plakietkę "AI beta" z informacją, że tłumaczenie jest wspomagane maszynowo. Ukrycie tego wyglądałoby dobrze dokładnie do momentu, w którym polski inżynier trafiłby na koślawe zdanie i zacząłby wątpić także w treść techniczną. Ta jawność kosztuje trochę wizerunkowego szlifu, ale kupuje kredyt zaufania.
+
+---
+
+## CSP na hashach pozwala przeglądarce psuć stronę po cichu
+
+Najostrzejsza decyzja w repo to nagłówek Content-Security-Policy. W `script-src` nie ma `'unsafe-inline'` — tylko `'self'` plus pięć hashy SHA-256, po jednym na każdy inline'owy skrypt, który ma prawo istnieć. Wstrzyknięty `<script>` po prostu się nie wykona, co dla statycznego bloga z dwoma endpointami formularzy domyka drzwi XSS tak szczelnie, jak się realnie da.
+
+Utrzymanie listy przy pięciu hashach wymagało dwóch świadomych ruchów. Po pierwsze, ustawienie Vite wypycha wszystkie skrypty komponentów i wysp poza HTML:
+
+```js
+vite: {
+  // Force hoisted/island scripts to be emitted as external /_astro/*.js files
+  // instead of being inlined into the HTML. Inline <script> would otherwise
+  // need a per-build hash in the CSP; external same-origin scripts are covered
+  // by `script-src 'self'`.
+  build: { assetsInlineLimit: 0 },
+},
+```
+
+Po drugie, skrypty, które muszą zostać inline — skrypt motywu odpalany przed pierwszym paintem, enhancer kart z kodem, logika formularza kontaktowego — czytają przetłumaczone teksty z bloków danych `<script type="application/json">`, zamiast mieć stringi wklejane do kodu. Bloki danych nie podlegają `script-src`, więc wykonywalne skrypty mają statyczną treść, a przez to stabilne hashe. Bez tego rozdziału każda poprawka copy w `ui.ts` zmieniałaby treść skryptu i unieważniała hash.
+
+I tu jest haczyk, który zmienia checkbox w zobowiązanie: kiedy hash się nie zgadza, nic nie failuje. Build zielony, deploy zielony, a przeglądarka po cichu odmawia wykonania tego jednego skryptu. W praktyce wygląda to tak: mignięcie motywu przy wejściu, formularz kontaktowy połykający kliknięcia albo bloki kodu bez przycisku kopiowania — każdy z tych objawów widać dopiero na produkcji i żaden nie zostawia błędu w CI. W repo jest skrypt `pnpm csp:hashes`, który skanuje zbudowany output i drukuje gotową wartość `script-src`, oraz dokumentacja mówiąca wprost: *po każdej zmianie inline'owego skryptu i po każdym upgradzie Astro odpal to i sprawdź konsolę na wdrożonej stronie*. To ręczny krok w skądinąd zautomatyzowanym pipelinie i nie jestem z nim w pełni pogodzony. W projekcie zespołowym wpiąłbym generowanie hashy w build albo zszedł do łagodniejszej polityki, zamiast polegać na czyjejś pamięci. Tutaj, gdzie deployuję tylko ja, dyscyplina się trzyma — na razie.
+
+---
+
+## Pipeline podglądów społecznościowych, którego nikt nie widzi
+
+Każde hero na stronie to WebP. Każdy podgląd społecznościowy to JPEG. Ta duplikacja istnieje z jednego prozaicznego powodu: LinkedIn nie renderuje niezawodnie `og:image` w WebP, a to właśnie na LinkedInie ląduje blog inżynierski nastawiony na konsulting.
+
+Jest więc mały skrypt na sharpie, odpalany jako `pnpm og`, który kadruje hero każdego wpisu do JPEG-a 1200×630:
+
+```js
+await sharp(path.join(HEROES_DIR, heroFile))
+  .resize(1200, 630, { fit: "cover" })
+  .jpeg({ quality: 84 })
+  .toFile(path.join(OUT_DIR, `${slug}.jpg`));
+```
+
+Wygenerowane pliki są commitowane do `public/og/`, po jednym na slug; tłumaczenia współdzielą slug, więc i podgląd. Gdy pliku brakuje, `BaseHead` sięga po generyczny domyślny obrazek zamiast się wywalać — wpis po prostu wygląda anonimowo przy udostępnieniu, co jest osobną, cichą karą za pominięcie kroku.
+
+To jest ten rodzaj maszynerii, która nie zarabia nic na samej stronie i ujawnia się dopiero swoją nieobecnością: link wklejony na LinkedIna albo Slacka albo rozwija się w porządną kartę, albo nie — i klikalność idzie za tym.
+
+---
+
+## Dług, który zostawiłem świadomie
+
+Każdy blok kodu na tym blogu renderuje się jako interaktywna karta — plakietka języka, przycisk kopiowania, przełącznik numerów linii, automatyczne zwijanie powyżej czternastu linii. Robi to inline'owy skrypt w layoucie artykułu, który po załadowaniu strony przepisuje w DOM każdy `<pre>`. Jakieś dwieście linii chirurgii na DOM po stronie klienta — a architektonicznie czysta wersja jest oczywista: zrobić to w czasie builda jako plugin rehype, wysłać gotowy markup, skasować robotę w runtime.
+
+Nie zrobiłem tego i szczery powód to dźwignia. Wersja runtime'owa zajęła jeden wieczór i przetrwała każdy upgrade Astro bez dotykania, bo zależy wyłącznie od wyrenderowanego HTML-a. Plugin rehype wpina się w AST pipeline'u MDX i dziedziczy sprzężenie z jego utrzymaniem. W projekcie klienckim rachunek się odwraca — pomnóżcie zmarnowaną pracę głównego wątku przez realny ruch i wersja build-time wygrywa bez dyskusji. Tutaj kosztuje to kilka milisekund na stronie artykułu, a ja wolę przeznaczyć wieczór na pisanie.
+
+Podobną historię opowiada zestaw testów. Jest dokładnie jeden plik Vitestu i pokrywa helpery parowania wpisów oraz budowania URL-i — czyli logikę, w której cichy błąd rozjechałby pary `hreflang` albo ścieżki OG w całym serwisie. Resztę trzyma `astro check`, schema Zod na frontmatterze i fakt, że statyczna strona ma bardzo mało sposobów, żeby zawieść w runtime. Wiem, jak wygląda poważna piramida testów; to repo jej nie potrzebuje, a udawanie, że jest inaczej, byłoby testowym teatrem.
+
+---
+
+## Najważniejszy wniosek
+
+Żadna z tych decyzji nie imponuje w pojedynkę. Statyczny output, dwie leniwe wyspy, tłumaczenia parowane nazwą pliku, hashowane skrypty inline, kadr sharpem pod LinkedIna — każda z osobna to przypis. Dopiero ich suma jest właściwym portfolio: dowodem, jakie kompromisy wybieram, kiedy nikt mnie do niczego nie zmusza, widocznym dla każdego, kto otworzy repo albo DevTools.
+
+Blog nie jest czymś, co się buduje obok pracy. Jest pracą — z twoim nazwiskiem przy każdym ograniczeniu.
+
+---
+
+## Podsumowanie
+
+- Strona buduje się w pełni statycznie (`output: "static"`); po stronie serwera działają tylko endpointy kontaktu i newslettera, a nowa strona nie może przypadkiem stać się SSR.
+- React hydratuje się wyłącznie tam, gdzie wpis osadza interaktywny widget, przez `client:visible` w dedykowanym wrapperze — strony bez widgetów nie wysyłają frameworkowego JavaScriptu.
+- Polskie i angielskie wpisy paruje wspólny slug w nazwie pliku, co napędza przełącznik języka i alternaty `hreflang` bez CMS-a i ręcznych odnośników.
+- `script-src` używa pięciu hashy SHA-256 zamiast `'unsafe-inline'`; `assetsInlineLimit: 0` i bloki danych JSON utrzymują te hashe w stabilności, a `pnpm csp:hashes` je regeneruje — ceną jest ręczny krok, którego pominięcie psuje stronę bezgłośnie.
+- Podglądy społecznościowe to JPEG-owe kopie WebP-owych hero, bo LinkedIn nie renderuje niezawodnie `og:image` w WebP; regeneruje je `pnpm og`.
+- Interaktywne karty kodu to świadomy dług w runtime: plugin rehype w czasie builda byłby czystszy, ale wersja po stronie klienta jest przy tej skali tańsza w utrzymaniu.

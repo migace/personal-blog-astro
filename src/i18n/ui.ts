@@ -35,6 +35,7 @@ export const ui = {
     "footer.kicker": "Michał Gacek / Tiptopdesign",
     "footer.copy": "Full-stack AI consulting for business problems that need real execution.",
     "footer.rights": "All rights reserved.",
+    "footer.rss": "RSS feed",
 
     "post.readingTime": "min read",
     "post.lastUpdated": "Last updated on",
@@ -111,6 +112,7 @@ export const ui = {
     "footer.copy":
       "Konsulting full-stack i AI dla problemów biznesowych, które trzeba realnie dowieźć.",
     "footer.rights": "Wszelkie prawa zastrzeżone.",
+    "footer.rss": "Kanał RSS",
 
     "post.readingTime": "min czytania",
     "post.lastUpdated": "Aktualizacja",

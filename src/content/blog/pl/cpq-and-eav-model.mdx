@@ -1,12 +1,14 @@
 ---
 title: "Kiedy używać CPQ i modelu EAV - wnioski z budowy prototypu"
-description: "CPQ i EAV to dwa z najgoręcej dyskutowanych wzorców w systemach biznesowych. Oto kiedy naprawdę mają sens, kiedy są przerostem formy nad treścią i dlaczego tak często lądują w tej samej bazie kodu."
+description: "Kiedy CPQ i model EAV naprawdę mają sens, kiedy są przerostem formy, i czemu tak często lądują w tej samej bazie kodu."
 pubDate: "April 20 2026"
 heroImage: "../../../assets/heroes/cpq-eav-intro.webp"
 heroAlt: "Koncepcje modelu CPQ i EAV pokazane jako połączone bloki konfiguracji produktu"
 tags: ["Architecture", "Backend"]
 lang: "pl"
 ---
+
+import EavExplorerIsland from "../../../components/EavExplorer/EavExplorerIsland.astro";
 
 *Dlaczego tradycyjne modelowanie domeny w pewnym momencie przestaje działać - i po co sięgać, kiedy już do tego dojdzie.*
 
@@ -105,6 +107,10 @@ W uproszczeniu zasada brzmi tak:
 
 > Jeśli atrybuty są stabilne, używaj zwykłych kolumn.
 > Jeśli atrybuty są dynamiczne i muszą ewoluować niezależnie od deployów, rozważ EAV.
+
+Ten kompromis można poczuć na własnej klawiaturze, zamiast wierzyć mi na słowo. Eksplorator poniżej wykonuje te same trzy zadania na obu modelach przechowywania: wczytanie jednej konfiguracji, filtrowanie po dwóch atrybutach i dodanie zupełnie nowego atrybutu. Przełączaj modele i patrz na generowany SQL oraz liczbę joinów - i zwróć uwagę, który model wymaga migracji przy trzecim zadaniu. Opóźnienia są symulowane przez `setTimeout`, liczby wierszy są poglądowe; uczciwa część to kształt SQL-a.
+
+<EavExplorerIsland />
 
 ---
 
@@ -290,7 +296,3 @@ Te dwa podejścia naturalnie spotykają się w systemach, które muszą wspiera�
 Najgorsze, co możesz zrobić, to rozsmarować EAV po całym modelu na wszelki wypadek. Niewiele lepsze jest budowanie pełnej platformy CPQ dla czegoś, co w rzeczywistości jest małym katalogiem z paroma opcjami.
 
 Dobrze zaprojektowany system to nie najbardziej elastyczny system, jaki da się wyobrazić. To system elastyczny tam, gdzie trzeba, i celowo prosty tam, gdzie może być.
-
----
-
-*Zmagasz się z modelowaniem złożonych produktów w swoim systemie? Zostaw komentarz poniżej albo odezwij się do mnie na LinkedIn - chętnie posłucham, jak podchodzisz do kompromisu między modelem EAV a relacyjnym.*

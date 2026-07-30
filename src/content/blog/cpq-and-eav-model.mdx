@@ -1,11 +1,13 @@
 ---
 title: "When to Use CPQ and the EAV Model - Lessons from Building a Prototype"
-description: "CPQ and EAV are two of the most debated patterns in business systems. Here is when they actually make sense, when they are overkill, and why they so often end up in the same codebase."
+description: "When CPQ and the EAV model actually make sense, when they are overkill, and why the two so often end up in the same codebase."
 pubDate: "April 20 2026"
 heroImage: "../../assets/heroes/cpq-eav-intro.webp"
 heroAlt: "CPQ and EAV model concepts shown as connected product configuration blocks"
 tags: ["Architecture", "Backend"]
 ---
+
+import EavExplorerIsland from "../../components/EavExplorer/EavExplorerIsland.astro";
 
 *Why traditional domain modeling eventually stops working - and what to reach for when it does.*
 
@@ -104,6 +106,10 @@ A simple rule of thumb is this:
 
 > If attributes are stable, use regular columns.
 > If attributes are dynamic and need to evolve independently of deployments, consider EAV.
+
+You can feel this trade-off instead of taking my word for it. The explorer below runs the same three tasks against both storage models: loading one configuration, filtering by two attributes, and adding a brand-new attribute. Watch the generated SQL and the join count as you switch - and note which model needs a migration for the third task. The latencies are simulated with `setTimeout` and the row counts are illustrative; the shape of the SQL is the honest part.
+
+<EavExplorerIsland />
 
 ---
 
@@ -289,7 +295,3 @@ These two approaches naturally meet in systems that need to support multiple fam
 The worst thing you can do is spread EAV across the entire model just in case. A close second is building a full CPQ platform for what is, in reality, a small catalog with only a couple of options.
 
 A well-designed system is not the most flexible system imaginable. It is flexible where necessary and intentionally simple where it can be.
-
----
-
-*Are you struggling with modeling complex products in your system? Drop a comment below or connect with me on LinkedIn - I'd love to hear how you approach the EAV vs. relational data modeling trade-off.*
