@@ -1,0 +1,55 @@
+---
+import AppDoc from "../../layouts/AppDoc.astro";
+import { SITE_TITLE } from "../../consts";
+import { localizePath } from "../../i18n/utils";
+import type { Lang } from "../../i18n/ui";
+import {
+  QUADRA_CONTACT_EMAIL,
+  QUADRA_PATH,
+  quadraPrivacyPage,
+} from "../../i18n/content/quadra";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const c = quadraPrivacyPage[lang];
+const supportHref = localizePath(QUADRA_PATH, lang);
+---
+
+<AppDoc
+  lang={lang}
+  title={`${c.metaTitle} - ${SITE_TITLE}`}
+  description={c.metaDescription}
+  eyebrow={c.eyebrow}
+  eyebrowHref={supportHref}
+  heading={c.title}
+  meta={c.effective}
+  lead={c.lead}
+>
+  {
+    c.sections.map((section) => (
+      <>
+        <h2>{section.title}</h2>
+        {section.body.map((block) =>
+          Array.isArray(block) ? (
+            <ul>
+              {block.map((item) => (
+                <li>{item}</li>
+              ))}
+            </ul>
+          ) : (
+            <p>{block}</p>
+          )
+        )}
+      </>
+    ))
+  }
+
+  <h2>{c.contactTitle}</h2>
+  <p>
+    {c.contactLead} <a href={`mailto:${QUADRA_CONTACT_EMAIL}`}>{QUADRA_CONTACT_EMAIL}</a>
+  </p>
+  <p><a href={supportHref}>{c.backLink}</a></p>
+</AppDoc>

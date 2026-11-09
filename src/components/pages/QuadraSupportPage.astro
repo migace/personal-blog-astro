@@ -1,0 +1,43 @@
+---
+import AppDoc from "../../layouts/AppDoc.astro";
+import { SITE_TITLE } from "../../consts";
+import { localizePath } from "../../i18n/utils";
+import type { Lang } from "../../i18n/ui";
+import {
+  QUADRA_CONTACT_EMAIL,
+  QUADRA_PRIVACY_PATH,
+  quadraSupportPage,
+} from "../../i18n/content/quadra";
+
+interface Props {
+  lang: Lang;
+}
+
+const { lang } = Astro.props;
+const c = quadraSupportPage[lang];
+---
+
+<AppDoc
+  lang={lang}
+  title={`${c.metaTitle} - ${SITE_TITLE}`}
+  description={c.metaDescription}
+  eyebrow={c.eyebrow}
+  heading={c.title}
+  lead={c.lead}
+>
+  <h2>{c.faqTitle}</h2>
+  {
+    c.faq.map((item) => (
+      <>
+        <h3>{item.q}</h3>
+        <p>{item.a}</p>
+      </>
+    ))
+  }
+
+  <h2>{c.contactTitle}</h2>
+  <p>
+    {c.contactLead} <a href={`mailto:${QUADRA_CONTACT_EMAIL}`}>{QUADRA_CONTACT_EMAIL}</a>
+  </p>
+  <p><a href={localizePath(QUADRA_PRIVACY_PATH, lang)}>{c.privacyLink}</a></p>
+</AppDoc>
